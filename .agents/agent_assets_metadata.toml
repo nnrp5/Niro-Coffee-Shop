@@ -1,0 +1,16 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "3h_MoKEJj4sDmAcf_93Ls"
+uri = "file://generated-artifacts/NOIR-Coffee-Project.zip"
+type = "unspecified"
+title = "NOIR Coffee Project ZIP"
+description = "نسخة ZIP من ملفات مشروع متجر NOIR Coffee ومكتباته اللازمة، بدون الأسرار أو ملفات التبعيات الثقيلة."
+logical_id = "0455d9a0-bff5-440a-9991-6651251130a6"
+content_hash = "sha256:fd421c17a10059f01f2d36d9b49e3900f0324823938701ccb0d0636545f32a2c"
+size = 295501
+mtime_ms = 1793641496716
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:a39d3a01-c763-45ef-8e13-10e1460c291b/0455d9a0-bff5-440a-9991-6651251130a6/03bd7928-a18d-4b32-9550-4e9366069f10"
+storage_version_token = "1793641509218031"
+content_type = "application/octet-stream"

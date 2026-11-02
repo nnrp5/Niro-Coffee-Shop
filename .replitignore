@@ -3,3 +3,6 @@
 
 # No need to store the pnpm store twice.
 .local
+
+# Generated export archives are downloadable deliverables, not deploy assets.
+/generated-artifacts/

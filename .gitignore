@@ -13,6 +13,7 @@ out-tsc
 .nuxt
 .output
 .vercel
+/generated-artifacts/
 
 # dependencies
 node_modules
