@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "NOIR Coffee"
+description = "An Arabic-first NOIR Coffee storefront localized for Kuwait and Kuwaiti dinar, with customer accounts, order tracking, and loyalty rewards."
+version = "1.0.0"
+id = "artifacts/niro-coffee"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23180
+
+[services.development]
+run = "pnpm --filter @workspace/niro-coffee run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/niro-coffee", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/niro-coffee/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23180"
+BASE_PATH = "/"

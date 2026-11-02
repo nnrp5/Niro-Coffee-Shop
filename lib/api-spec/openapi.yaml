@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: account
+    description: Authenticated customer account operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,124 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /account/profile:
+    get:
+      operationId: getAccountProfile
+      tags: [account]
+      summary: Get the signed-in customer's profile
+      responses:
+        "200":
+          description: Customer profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountProfile"
+        "401":
+          description: Authentication required
+    patch:
+      operationId: updateAccountProfile
+      tags: [account]
+      summary: Update the signed-in customer's profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountProfileInput"
+      responses:
+        "200":
+          description: Updated customer profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountProfile"
+        "400":
+          description: Invalid profile
+        "401":
+          description: Authentication required
+  /account/orders:
+    get:
+      operationId: getAccountOrders
+      tags: [account]
+      summary: List the signed-in customer's orders
+      responses:
+        "200":
+          description: Customer order history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CustomerOrder"
+        "401":
+          description: Authentication required
+  /account/loyalty:
+    get:
+      operationId: getAccountLoyalty
+      tags: [account]
+      summary: Get the signed-in customer's loyalty balance
+      responses:
+        "200":
+          description: Loyalty points and redemption settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoyaltyBalance"
+        "401":
+          description: Authentication required
+  /account/favorites:
+    get:
+      operationId: getAccountFavorites
+      tags: [account]
+      summary: List saved products for the signed-in customer
+      responses:
+        "200":
+          description: Saved products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CustomerFavorite"
+        "401":
+          description: Authentication required
+    post:
+      operationId: saveAccountFavorite
+      tags: [account]
+      summary: Save a product to the signed-in customer's favorites
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerFavoriteInput"
+      responses:
+        "201":
+          description: Saved product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerFavorite"
+        "400":
+          description: Invalid product
+        "401":
+          description: Authentication required
+  /account/favorites/{productId}:
+    delete:
+      operationId: removeAccountFavorite
+      tags: [account]
+      summary: Remove a saved product
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Favorite removed
+        "401":
+          description: Authentication required
 components:
   schemas:
     HealthStatus:
@@ -33,4 +153,85 @@ components:
           type: string
       required:
         - status
+    AccountProfile:
+      type: object
+      properties:
+        fullName:
+          type: string
+        phone:
+          type: ["string", "null"]
+        updatedAt:
+          type: string
+          format: date-time
+      required: [fullName, phone, updatedAt]
+    AccountProfileInput:
+      type: object
+      properties:
+        fullName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        phone:
+          type: ["string", "null"]
+          maxLength: 40
+      required: [fullName]
+    CustomerOrder:
+      type: object
+      properties:
+        id:
+          type: string
+        orderNumber:
+          type: string
+        status:
+          type: string
+          enum: [order_placed, processing, shipped, delivered]
+        placedAt:
+          type: string
+          format: date-time
+        total:
+          type: number
+        currency:
+          type: string
+        trackingNumber:
+          type: ["string", "null"]
+        itemsSummary:
+          type: array
+          items:
+            type: string
+      required: [id, orderNumber, status, placedAt, total, currency, trackingNumber, itemsSummary]
+    LoyaltyBalance:
+      type: object
+      properties:
+        pointsBalance:
+          type: integer
+          minimum: 0
+        lifetimeEarned:
+          type: integer
+          minimum: 0
+        pointsPerCurrencyUnit:
+          type: integer
+          minimum: 1
+        redemptionValuePer100Points:
+          type: number
+          minimum: 0
+        currency:
+          type: string
+      required: [pointsBalance, lifetimeEarned, pointsPerCurrencyUnit, redemptionValuePer100Points, currency]
+    CustomerFavorite:
+      type: object
+      properties:
+        productId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [productId, createdAt]
+    CustomerFavoriteInput:
+      type: object
+      properties:
+        productId:
+          type: string
+          minLength: 1
+          maxLength: 80
+      required: [productId]
 
