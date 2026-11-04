@@ -1,5 +1,5 @@
 import { createContext, type FormEvent, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, ArrowUpLeft, AppWindow, Coffee, Instagram, Menu, Minus, Plus, Search, ShoppingBag, X, Heart, UserRound, Package, Award, Settings, LogOut, Truck, BadgeCheck, ChevronLeft, ChevronRight, Check, RefreshCw } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUpLeft, Coffee, Instagram, Menu, Minus, Plus, Search, ShoppingBag, X, Heart, UserRound, Package, Award, Settings, LogOut, Truck, BadgeCheck, ChevronLeft, ChevronRight, Check, RefreshCw } from 'lucide-react';
 import editorialImage from './assets/niro-coffee-editorial.jpg';
 import { ClerkProvider, SignIn, SignUp, Show, useClerk, useUser } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
@@ -21,11 +21,6 @@ type Product = {
 };
 
 type CartLine = { product: Product; quantity: number };
-type InstallPromptEvent = Event & {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
-};
-
 const products: Product[] = [
   { id: 1, name: 'إثيوبيا قوجي', origin: 'قوجي · إثيوبيا · معالجة طبيعية', price: 5.643, roast: 'تحميص فاتح', category: 'single', tag: 'الأكثر طلباً', bagName: 'GUJI' },
   { id: 2, name: 'برازيل سيرادو', origin: 'ميناس جيرايس · البرازيل', price: 4.896, roast: 'تحميص متوسط', category: 'espresso', tag: 'موسمي', bagName: 'CERRADO' },
@@ -66,60 +61,6 @@ function LanguageToggle() {
       window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
     }
   }} aria-label={language === 'ar' ? 'Switch language to English' : 'تغيير اللغة إلى العربية'} data-testid="button-language-toggle">{language === 'ar' ? 'EN' : 'عربي'}</button>;
-}
-function InstallAppButton() {
-  const { language } = useLanguage();
-  const copy = translations[language];
-  const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
-  const [installHint, setInstallHint] = useState('');
-  const [isInstalled, setIsInstalled] = useState(() => window.matchMedia('(display-mode: standalone)').matches);
-
-  useEffect(() => {
-    const onBeforeInstallPrompt = (event: Event) => {
-      event.preventDefault();
-      setInstallPrompt(event as InstallPromptEvent);
-    };
-    const onAppInstalled = () => {
-      setIsInstalled(true);
-      setInstallPrompt(null);
-    };
-    window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt);
-    window.addEventListener('appinstalled', onAppInstalled);
-    return () => {
-      window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt);
-      window.removeEventListener('appinstalled', onAppInstalled);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!installHint) return;
-    const timeout = window.setTimeout(() => setInstallHint(''), 4200);
-    return () => window.clearTimeout(timeout);
-  }, [installHint]);
-
-  const handleInstall = async () => {
-    if (!installPrompt) {
-      setInstallHint(copy.installHelpToast);
-      return;
-    }
-    try {
-      await installPrompt.prompt();
-      const choice = await installPrompt.userChoice;
-      if (choice.outcome === 'accepted') setIsInstalled(true);
-    } catch {
-      setInstallHint(copy.installError);
-    } finally {
-      setInstallPrompt(null);
-    }
-  };
-
-  if (isInstalled) return null;
-  return <span className="install-app-wrap">
-    <button className="install-app-button" type="button" onClick={() => void handleInstall()} aria-label={copy.installApp} title={copy.installApp} data-testid="button-install-app">
-      <AppWindow size={16} strokeWidth={1.7} /><span>{copy.installApp}</span>
-    </button>
-    {installHint && <span className="install-hint" role="status">{installHint}</span>}
-  </span>;
 }
 function stripBase(path: string) { return basePath && path.startsWith(basePath) ? path.slice(basePath.length) || '/' : path; }
 if (!clerkPubKey) throw new Error('Missing VITE_CLERK_PUBLISHABLE_KEY for NOIR account sign-in.');
@@ -255,7 +196,6 @@ function Storefront() {
           </nav>
           <div className="nav-actions">
             <LanguageToggle />
-            <InstallAppButton />
             <button className="icon-button" aria-label={copy.searchProducts} data-testid="button-open-search" onClick={() => setSearchOpen(true)}><Search size={18} strokeWidth={1.6} /></button>
             <button className="icon-button" aria-label={copy.account} data-testid="link-account" onClick={() => setLocation('/account')}><UserRound size={18} strokeWidth={1.6} /></button>
             <button className="icon-button" aria-label={copy.openCart(cartCount)} data-testid="button-open-cart" onClick={() => setCartOpen(true)}>
@@ -531,7 +471,7 @@ function AccountPage() {
     <header className="account-topbar">
       <a className="brand" href={basePath || '/'} data-testid="link-account-home"><span className="brand-mark">ن</span><span className="brand-word">NOIR</span></a>
       <a className="account-store-link" href={`${basePath || ''}/`} data-testid="link-back-store">{copy.accountBackToStore} {language === 'ar' ? <ArrowLeft size={15} /> : <ArrowRight size={15} />}</a>
-      <div className="account-top-actions"><InstallAppButton /><LanguageToggle /></div>
+      <LanguageToggle />
     </header>
     <div className="account-layout">
       <aside className="account-sidebar">
@@ -579,12 +519,12 @@ const clerkAppearance = {
 function SignInPage() {
   const { language } = useLanguage();
   const copy = translations[language];
-  return <div className={`auth-screen ${language === 'en' ? 'lang-en' : ''}`} dir={language === 'ar' ? 'rtl' : 'ltr'}><a className="auth-brand brand" href={basePath || '/'}><span className="brand-mark">ن</span><span className="brand-word">NOIR</span></a><div className="auth-controls"><LanguageToggle /><InstallAppButton /></div><p>{copy.signInTagline}</p><SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} /></div>;
+  return <div className={`auth-screen ${language === 'en' ? 'lang-en' : ''}`} dir={language === 'ar' ? 'rtl' : 'ltr'}><a className="auth-brand brand" href={basePath || '/'}><span className="brand-mark">ن</span><span className="brand-word">NOIR</span></a><LanguageToggle /><p>{copy.signInTagline}</p><SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} /></div>;
 }
 function SignUpPage() {
   const { language } = useLanguage();
   const copy = translations[language];
-  return <div className={`auth-screen ${language === 'en' ? 'lang-en' : ''}`} dir={language === 'ar' ? 'rtl' : 'ltr'}><a className="auth-brand brand" href={basePath || '/'}><span className="brand-mark">ن</span><span className="brand-word">NOIR</span></a><div className="auth-controls"><LanguageToggle /><InstallAppButton /></div><p>{copy.signUpTagline}</p><SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} /></div>;
+  return <div className={`auth-screen ${language === 'en' ? 'lang-en' : ''}`} dir={language === 'ar' ? 'rtl' : 'ltr'}><a className="auth-brand brand" href={basePath || '/'}><span className="brand-mark">ن</span><span className="brand-word">NOIR</span></a><LanguageToggle /><p>{copy.signUpTagline}</p><SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} /></div>;
 }
 function ClerkCacheInvalidator() {
   const { addListener } = useClerk();
