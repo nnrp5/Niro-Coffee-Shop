@@ -370,6 +370,7 @@ function Storefront() {
             <div><h3>{copy.weAreHere}</h3><div className="footer-links"><span>{copy.socialSupport}</span><span>{copy.businessHours}</span><span>{copy.localRoasting}</span></div></div>
         </div>
           <div className="footer-bottom"><span>© NOIR COFFEE {new Date().getFullYear()}</span><span>{copy.footerMade}</span></div>
+          <div className="footer-credit">By: Abdulaziz ali hamada</div>
       </footer>
 
       <div className={`overlay ${cartOpen ? 'open' : ''}`} onClick={() => setCartOpen(false)} aria-hidden="true" />

@@ -238,6 +238,7 @@ button { color: inherit; }
 .socials { display:flex; gap:10px; margin-top:20px; }
 .socials a { width:30px; height:30px; display:grid; place-items:center; border:1px solid rgba(255,255,255,.23); border-radius:50%; color:#f4eee1; text-decoration:none; font-size:9px; }
 .footer-bottom { max-width:1250px; margin:48px auto 0; padding-top:18px; border-top:1px solid rgba(255,255,255,.16); display:flex; justify-content:space-between; color:#9cafa0; font-family:var(--app-font-mono); font-size:9px; }
+.footer-credit { max-width:1250px; margin:13px auto 0; color:#9cafa0; font-family:var(--app-font-mono); font-size:8px; letter-spacing:.04em; text-align:center; }
 
 .overlay { position:fixed; z-index:60; inset:0; background:rgba(18,32,26,.45); opacity:0; visibility:hidden; transition:opacity .25s,visibility .25s; }
 .overlay.open { opacity:1; visibility:visible; }
@@ -480,6 +481,7 @@ button { color: inherit; }
   .footer-main { grid-template-columns:1fr 1fr; gap:34px 19px; }
   .footer-brand { grid-column:span 2; }
   .footer-bottom { flex-direction:column; gap:10px; margin-top:34px; }
+  .footer-credit { margin-top:12px; font-size:8px; }
 }
 @media(prefers-reduced-motion:reduce) {
   *,*::before,*::after { scroll-behavior:auto !important; animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
