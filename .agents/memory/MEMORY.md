@@ -1,1 +1,1 @@
-- [Authentication and catalog storage](auth-and-catalog-storage.md) — Supabase Auth is the chosen customer identity provider; MongoDB remains the product catalog.
+- [Authentication and catalog storage](auth-and-catalog-storage.md) — Supabase Auth and the Supabase products table are the chosen customer and catalog stores.
