@@ -1,45 +1,47 @@
 import { ListProductsResponse } from "@workspace/api-zod";
 import { Router, type IRouter } from "express";
-import type { Document } from "mongodb";
-import { getMongoDatabase } from "../lib/mongo";
 import { roundKwdPrice } from "../lib/pricing";
+import { getSupabasePublicClient } from "../lib/supabasePublic";
 
 const router: IRouter = Router();
 
 router.get("/products", async (req, res): Promise<void> => {
-  if (!process.env.MONGODB_URI?.trim()) {
-    req.log.warn("MONGODB_URI is not configured.");
+  const supabase = getSupabasePublicClient();
+  if (!supabase) {
+    req.log.warn("Supabase public configuration is missing or invalid.");
     res.status(503).json({ error: "Product catalog is not configured." });
     return;
   }
 
   try {
-    const database = await getMongoDatabase();
-    const documents = await database
-      .collection<Document>("products")
-      .find(
-        { isActive: { $ne: false } },
-        {
-          projection: {
-            _id: 0,
-            id: 1,
-            name: 1,
-            origin: 1,
-            price: 1,
-            roast: 1,
-            category: 1,
-            tag: 1,
-            bagName: 1,
-            weightGrams: 1,
-            imageUrl: 1,
-            isBestSeller: 1,
-            sortOrder: 1,
-          },
-        },
-      )
-      .sort({ sortOrder: 1, id: 1 })
-      .toArray();
-    const parsedProducts = ListProductsResponse.safeParse(documents);
+    const { data, error } = await supabase
+      .from("products")
+      .select("id, name, origin, price, roast, category, tag, bag_name, weight_grams, image_url, is_best_seller, sort_order")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true })
+      .order("id", { ascending: true });
+
+    if (error) {
+      req.log.warn({ code: error.code }, "Supabase product query failed.");
+      res.status(503).json({ error: "Product catalog is unavailable." });
+      return;
+    }
+
+    const products = (data ?? []).map((row) => ({
+      id: row.id,
+      name: row.name,
+      origin: row.origin,
+      price: Number(row.price),
+      roast: row.roast,
+      category: row.category,
+      tag: row.tag,
+      bagName: row.bag_name,
+      weightGrams: row.weight_grams,
+      imageUrl: row.image_url,
+      isBestSeller: row.is_best_seller,
+      sortOrder: row.sort_order,
+    }));
+    const parsedProducts = ListProductsResponse.safeParse(products);
 
     if (!parsedProducts.success) {
       req.log.error(
