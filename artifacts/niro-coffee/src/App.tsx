@@ -55,9 +55,7 @@ function LanguageToggle() {
 }
 
 function HomeRoute() {
-  const { isLoaded, user } = useAuth();
-  if (!isLoaded) return <div className="account-route-loading" data-testid="state-auth-loading"><i /><i /></div>;
-  return user ? <Storefront /> : <SignInPage />;
+  return <Storefront />;
 }
 
 function Storefront() {
@@ -189,7 +187,7 @@ function Storefront() {
           <div className="nav-actions">
             <LanguageToggle />
             <button className="icon-button" aria-label={copy.searchProducts} data-testid="button-open-search" onClick={() => setSearchOpen(true)}><Search size={18} strokeWidth={1.6} /></button>
-            <button className="icon-button" aria-label={copy.account} data-testid="link-account" onClick={() => setLocation('/account')}><UserRound size={18} strokeWidth={1.6} /></button>
+            <button className="icon-button" aria-label={isSignedIn ? copy.account : copy.signIn} data-testid="link-account" onClick={() => setLocation(isSignedIn ? '/account' : '/sign-in')}><UserRound size={18} strokeWidth={1.6} /></button>
             <button className="icon-button" aria-label={copy.openCart(cartCount)} data-testid="button-open-cart" onClick={() => setCartOpen(true)}>
               <ShoppingBag size={18} strokeWidth={1.6} />
               {cartCount > 0 && <span className="cart-count">{cartCount}</span>}
