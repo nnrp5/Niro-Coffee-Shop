@@ -7,6 +7,27 @@ import './index.css';
 
 if ('serviceWorker' in navigator && window.isSecureContext) {
   window.addEventListener('load', () => {
+    if (import.meta.env.DEV) {
+      void (async () => {
+        const appRoot = new URL(import.meta.env.BASE_URL, window.location.origin).href;
+        const registration = await navigator.serviceWorker.getRegistration(appRoot);
+        const hadController = Boolean(navigator.serviceWorker.controller);
+
+        await registration?.unregister();
+        const cacheNames = await caches.keys();
+        await Promise.all(
+          cacheNames
+            .filter((cacheName) => cacheName.startsWith('noir-coffee-'))
+            .map((cacheName) => caches.delete(cacheName)),
+        );
+
+        if (hadController) window.location.reload();
+      })().catch((error: unknown) => {
+        console.error('NOIR Coffee development cache could not be cleared:', error);
+      });
+      return;
+    }
+
     void navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, {
       scope: import.meta.env.BASE_URL,
     }).catch((error: unknown) => {

@@ -553,13 +553,14 @@ function SignInPage() {
   const copy = translations[language];
   const { user } = useAuth();
   const [, setLocation] = useLocation();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState('');
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const email = String(formData.get('email') ?? '').trim();
+    const password = String(formData.get('password') ?? '');
     if (!supabase) {
       setMessage(copy.authConfigurationError);
       return;
@@ -585,8 +586,8 @@ function SignInPage() {
       <h1>{copy.signInTitle}</h1>
       <p className="auth-subtitle">{copy.signInSubtitle}</p>
       <form className="auth-form" onSubmit={(event) => void submit(event)} data-testid="form-sign-in">
-        <label>{copy.email}<input type="email" name="email" autoComplete="email" required maxLength={254} value={email} onChange={(event) => setEmail(event.target.value)} placeholder={copy.emailPlaceholder} data-testid="input-sign-in-email" /></label>
-        <label>{copy.password}<span className="password-field"><input type={showPassword ? 'text' : 'password'} name="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} placeholder={copy.passwordPlaceholder} data-testid="input-sign-in-password" /><button className="password-toggle" type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? copy.hidePassword : copy.showPassword} aria-pressed={showPassword} data-testid="button-toggle-sign-in-password">{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></span></label>
+        <label htmlFor="sign-in-email">{copy.email}<input id="sign-in-email" type="email" name="email" autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} inputMode="email" enterKeyHint="next" required maxLength={254} placeholder={copy.emailPlaceholder} data-testid="input-sign-in-email" /></label>
+        <label htmlFor="sign-in-password">{copy.password}<span className="password-field"><input id="sign-in-password" type={showPassword ? 'text' : 'password'} name="password" autoComplete="current-password" autoCapitalize="none" autoCorrect="off" spellCheck={false} enterKeyHint="go" required placeholder={copy.passwordPlaceholder} data-testid="input-sign-in-password" /><button className="password-toggle" type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? copy.hidePassword : copy.showPassword} aria-pressed={showPassword} data-testid="button-toggle-sign-in-password">{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></span></label>
         {(message || !supabase) && <p className="auth-message error" role="alert" data-testid="status-sign-in">{message || copy.authConfigurationError}</p>}
         <button className="auth-submit" type="submit" disabled={isSubmitting || !supabase} data-testid="button-submit-sign-in">{isSubmitting ? copy.authWorking : copy.signIn}</button>
       </form>
@@ -599,14 +600,15 @@ function SignUpPage() {
   const copy = translations[language];
   const { user } = useAuth();
   const [, setLocation] = useLocation();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const email = String(formData.get('email') ?? '').trim();
+    const password = String(formData.get('password') ?? '');
     if (!supabase) {
       setMessage(copy.authConfigurationError);
       return;
@@ -641,8 +643,8 @@ function SignUpPage() {
       <h1>{copy.signUpTitle}</h1>
       <p className="auth-subtitle">{copy.signUpSubtitle}</p>
       <form className="auth-form" onSubmit={(event) => void submit(event)} data-testid="form-sign-up">
-        <label>{copy.email}<input type="email" name="email" autoComplete="email" required maxLength={254} value={email} onChange={(event) => setEmail(event.target.value)} placeholder={copy.emailPlaceholder} data-testid="input-sign-up-email" /></label>
-        <label>{copy.password}<span className="password-field"><input type={showPassword ? 'text' : 'password'} name="password" autoComplete="new-password" required minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} placeholder={copy.passwordPlaceholder} data-testid="input-sign-up-password" /><button className="password-toggle" type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? copy.hidePassword : copy.showPassword} aria-pressed={showPassword} data-testid="button-toggle-sign-up-password">{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></span><small className="auth-hint">{copy.passwordMinimum}</small></label>
+        <label htmlFor="sign-up-email">{copy.email}<input id="sign-up-email" type="email" name="email" autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} inputMode="email" enterKeyHint="next" required maxLength={254} placeholder={copy.emailPlaceholder} data-testid="input-sign-up-email" /></label>
+        <label htmlFor="sign-up-password">{copy.password}<span className="password-field"><input id="sign-up-password" type={showPassword ? 'text' : 'password'} name="password" autoComplete="new-password" autoCapitalize="none" autoCorrect="off" spellCheck={false} enterKeyHint="go" required minLength={8} placeholder={copy.passwordPlaceholder} data-testid="input-sign-up-password" /><button className="password-toggle" type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? copy.hidePassword : copy.showPassword} aria-pressed={showPassword} data-testid="button-toggle-sign-up-password">{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></span><small className="auth-hint">{copy.passwordMinimum}</small></label>
         {(message || !supabase) && <p className={`auth-message ${isSuccess ? 'success' : 'error'}`} role={isSuccess ? 'status' : 'alert'} data-testid="status-sign-up">{message || copy.authConfigurationError}</p>}
         <button className="auth-submit" type="submit" disabled={isSubmitting || !supabase} data-testid="button-submit-sign-up">{isSubmitting ? copy.authWorking : copy.signUp}</button>
       </form>

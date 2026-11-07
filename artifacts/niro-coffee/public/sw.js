@@ -1,4 +1,4 @@
-const CACHE_NAME = 'noir-coffee-shell-v1';
+const CACHE_NAME = 'noir-coffee-shell-v2';
 const APP_ROOT = new URL('./', self.registration.scope).href;
 const PRECACHE_URLS = [
   APP_ROOT,
@@ -53,10 +53,10 @@ self.addEventListener('fetch', (event) => {
     const updatePromise = fetch(request)
       .then((response) => {
         if (response.ok) {
-          return cachePromise.then((cache) => {
-            cache.put(APP_ROOT, response.clone());
-            return response;
-          });
+          return cachePromise
+            .then((cache) => cache.put(APP_ROOT, response.clone()))
+            .catch(() => undefined)
+            .then(() => response);
         }
         return response;
       })
@@ -64,8 +64,10 @@ self.addEventListener('fetch', (event) => {
 
     event.waitUntil(updatePromise.then(() => undefined));
     event.respondWith(
-      cachedPromise.then((cached) =>
-        cached || updatePromise.then((response) => response || Response.error()),
+      updatePromise.then((response) =>
+        response?.ok
+          ? response
+          : cachedPromise.then((cached) => cached || response || Response.error()),
       ),
     );
     return;
