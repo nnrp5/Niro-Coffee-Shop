@@ -3,8 +3,8 @@ name: Authentication and catalog storage
 description: Architecture choice for customer identity and the NOIR Coffee product catalog.
 ---
 
-Keep the existing Clerk-managed authentication for customer registration, sign-in, password handling, and sessions. Use MongoDB Atlas for the store's product catalog, accessed only from the API server with the server-side `MONGODB_URI`.
+Use Supabase Auth for customer registration, sign-in, password handling, and sessions. Customer signup asks only for email and password; customer names are optional profile data. Passwords must stay in the managed Auth system, never in the public customer profile table. MongoDB Atlas remains the chosen product catalog store.
 
-**Why:** Clerk is already integrated and manages password security and sessions; moving credentials into the product database would duplicate identity handling and increase risk.
+**Why:** The user explicitly chose Supabase Auth instead of retaining Clerk, after being told existing Clerk accounts would not transfer automatically. The user separately requested MongoDB for catalog products.
 
-**How to apply:** For follow-up work, preserve Clerk as the identity provider and keep password data out of MongoDB. Limit the MongoDB integration to catalog data unless the user explicitly changes this architecture.
+**How to apply:** Preserve Supabase Auth for identity and keep passwords out of application profile tables. Do not reintroduce Clerk or move the catalog to another database without an explicit request. Assign administrator privileges through trusted, verified identities, not signup metadata or first-user rules.

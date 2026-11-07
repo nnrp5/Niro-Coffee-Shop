@@ -1,4 +1,4 @@
-import { getAuth } from "@clerk/express";
+import { requireSupabaseAuth } from "../middlewares/supabaseAuth";
 import { and, eq, sql } from "drizzle-orm";
 import {
   accountFavoritesTable,
@@ -18,22 +18,14 @@ import {
   UpdateAccountProfileBody,
   UpdateAccountProfileResponse,
 } from "@workspace/api-zod";
-import { Router, type IRouter, type RequestHandler } from "express";
+import { Router, type IRouter } from "express";
 
 const router: IRouter = Router();
 
-const requireAccountAuth: RequestHandler = (req, res, next) => {
-  if (!getAuth(req).userId) {
-    res.status(401).json({ error: "Authentication required" });
-    return;
-  }
-  next();
-};
-
-router.use("/account", requireAccountAuth);
+router.use("/account", requireSupabaseAuth);
 
 router.get("/account/profile", async (req, res): Promise<void> => {
-  const userId = getAuth(req).userId!;
+  const userId = res.locals.authUserId as string;
   const [profile] = await db
     .select()
     .from(accountProfilesTable)
@@ -56,7 +48,7 @@ router.patch("/account/profile", async (req, res): Promise<void> => {
     return;
   }
 
-  const userId = getAuth(req).userId!;
+  const userId = res.locals.authUserId as string;
   const [profile] = await db
     .insert(accountProfilesTable)
     .values({
@@ -84,7 +76,7 @@ router.patch("/account/profile", async (req, res): Promise<void> => {
 });
 
 router.get("/account/orders", async (req, res): Promise<void> => {
-  const userId = getAuth(req).userId!;
+  const userId = res.locals.authUserId as string;
   const orders = await db
     .select()
     .from(customerOrdersTable)
@@ -102,7 +94,7 @@ router.get("/account/orders", async (req, res): Promise<void> => {
 });
 
 router.get("/account/loyalty", async (req, res): Promise<void> => {
-  const userId = getAuth(req).userId!;
+  const userId = res.locals.authUserId as string;
   const [totals] = await db
     .select({
       pointsBalance: sql<number>`coalesce(sum(case when ${customerLoyaltyTable.kind} = 'earned' then ${customerLoyaltyTable.points} else -${customerLoyaltyTable.points} end), 0)::int`,
@@ -123,7 +115,7 @@ router.get("/account/loyalty", async (req, res): Promise<void> => {
 });
 
 router.get("/account/favorites", async (req, res): Promise<void> => {
-  const userId = getAuth(req).userId!;
+  const userId = res.locals.authUserId as string;
   const favorites = await db
     .select({
       productId: accountFavoritesTable.productId,
@@ -150,7 +142,7 @@ router.post("/account/favorites", async (req, res): Promise<void> => {
     return;
   }
 
-  const userId = getAuth(req).userId!;
+  const userId = res.locals.authUserId as string;
   let [favorite] = await db
     .insert(accountFavoritesTable)
     .values({ userId, productId: body.data.productId })
@@ -193,7 +185,7 @@ router.delete("/account/favorites/:productId", async (req, res): Promise<void> =
     return;
   }
 
-  const userId = getAuth(req).userId!;
+  const userId = res.locals.authUserId as string;
   await db
     .delete(accountFavoritesTable)
     .where(

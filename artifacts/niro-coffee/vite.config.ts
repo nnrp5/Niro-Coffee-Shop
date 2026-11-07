@@ -21,6 +21,21 @@ if (Number.isNaN(port) || port <= 0) {
 
 const basePath = process.env.BASE_PATH;
 
+const supabaseKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim();
+if (supabaseKey) {
+  let isPublicKey = supabaseKey.startsWith('sb_publishable_');
+  if (!isPublicKey && supabaseKey.split('.').length === 3) {
+    try {
+      isPublicKey = JSON.parse(Buffer.from(supabaseKey.split('.')[1], 'base64url').toString()).role === 'anon';
+    } catch {
+      isPublicKey = false;
+    }
+  }
+  if (!isPublicKey) {
+    throw new Error('Use a Supabase publishable or anon key for the frontend, never a secret or service-role key.');
+  }
+}
+
 if (!basePath) {
   throw new Error(
     'BASE_PATH environment variable is required but was not provided.',

@@ -1,1 +1,1 @@
-- [Authentication and catalog storage](auth-and-catalog-storage.md) — Keep Clerk for customer accounts; MongoDB is for the coffee catalog, not passwords.
+- [Authentication and catalog storage](auth-and-catalog-storage.md) — Supabase Auth is the chosen customer identity provider; MongoDB remains the product catalog.

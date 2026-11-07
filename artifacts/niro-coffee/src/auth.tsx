@@ -2,8 +2,8 @@ import { createContext, type PropsWithChildren, useContext, useEffect, useMemo, 
 import { createClient, type Session, type User } from '@supabase/supabase-js';
 import { setAuthTokenGetter } from '@workspace/api-client-react';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim();
+const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim();
 
 if (!supabaseUrl || !supabasePublishableKey) {
   throw new Error('Supabase Auth is not configured for NOIR Coffee.');

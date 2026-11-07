@@ -53,7 +53,6 @@ function LanguageToggle() {
     }
   }} aria-label={language === 'ar' ? 'Switch language to English' : 'تغيير اللغة إلى العربية'} data-testid="button-language-toggle">{language === 'ar' ? 'EN' : 'عربي'}</button>;
 }
-function stripBase(path: string) { return basePath && path.startsWith(basePath) ? path.slice(basePath.length) || '/' : path; }
 
 function HomeRoute() {
   const { isLoaded, user } = useAuth();
@@ -438,6 +437,7 @@ function AccountPage() {
   const [profileMessage, setProfileMessage] = useState('');
   const [pointsPreview, setPointsPreview] = useState('');
   const [customerRole, setCustomerRole] = useState<'admin' | 'customer' | null>(null);
+  const [customerRoleError, setCustomerRoleError] = useState(false);
   const authDisplayName = typeof user?.user_metadata?.full_name === 'string'
     ? user.user_metadata.full_name
     : user?.email?.split('@')[0] ?? '';
@@ -457,11 +457,16 @@ function AccountPage() {
       .select('role')
       .eq('customer_id', user.id)
       .maybeSingle()
-      .then(({ data }) => {
-        if (active) setCustomerRole(data?.role === 'admin' ? 'admin' : data ? 'customer' : null);
-      })
-      .catch(() => {
-        if (active) setCustomerRole(null);
+      .then(({ data, error }) => {
+        if (active) {
+          setCustomerRoleError(Boolean(error) || !data);
+          setCustomerRole(data?.role === 'admin' ? 'admin' : data ? 'customer' : null);
+        }
+      }, () => {
+        if (active) {
+          setCustomerRole(null);
+          setCustomerRoleError(true);
+        }
       });
     return () => { active = false; };
   }, [user?.id]);
@@ -504,7 +509,7 @@ function AccountPage() {
         <button className="account-logout" data-testid="button-sign-out" onClick={() => void signOut().then(() => setLocation('/sign-in')).catch(() => setProfileMessage(copy.signOutError))}><LogOut size={16} /> {copy.signOut}</button>
       </aside>
       <main className="account-content">
-        <div className="account-heading"><div><div className="section-kicker">{copy.yourSpace}</div><h1>{sectionTitle}</h1></div><div className="account-heading-meta">{customerRole === 'admin' && <span className="account-role" data-testid="badge-admin">{copy.adminRole}</span>}<span className="account-email" data-testid="text-account-email">{user?.email || ''}</span></div></div>
+        <div className="account-heading"><div><div className="section-kicker">{copy.yourSpace}</div><h1>{sectionTitle}</h1></div><div className="account-heading-meta">{customerRoleError && <span className="account-role" role="status">{copy.roleUnavailable}</span>}{customerRole === 'admin' && <span className="account-role" data-testid="badge-admin">{copy.adminRole}</span>}<span className="account-email" data-testid="text-account-email">{user?.email || ''}</span></div></div>
         {isLoading ? <div className="account-skeleton" aria-label={copy.loadingAccount} data-testid="state-account-loading"><i /><i /><i /></div> : isError ? <div className="account-state error" data-testid="state-account-error"><strong>{copy.accountLoadError}</strong><span>{copy.connectionRetry}</span><button className="button-outline" onClick={refetchAll}><RefreshCw size={14} /> {copy.retry}</button></div> : <>
           {tab === 'profile' && <section className="account-panel">
             <div className="panel-intro"><h2>{copy.profileIntroTitle}</h2><p>{copy.profileIntroDescription}</p></div>
@@ -579,7 +584,7 @@ function SignInPage() {
       <p className="auth-subtitle">{copy.signInSubtitle}</p>
       <form className="auth-form" onSubmit={(event) => void submit(event)} data-testid="form-sign-in">
         <label>{copy.email}<input type="email" name="email" autoComplete="email" required maxLength={254} value={email} onChange={(event) => setEmail(event.target.value)} placeholder={copy.emailPlaceholder} data-testid="input-sign-in-email" /></label>
-        <label>{copy.password}<span className="password-field"><input type={showPassword ? 'text' : 'password'} name="password" autoComplete="current-password" required minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} placeholder={copy.passwordPlaceholder} data-testid="input-sign-in-password" /><button className="password-toggle" type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? copy.hidePassword : copy.showPassword} aria-pressed={showPassword} data-testid="button-toggle-sign-in-password">{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></span></label>
+        <label>{copy.password}<span className="password-field"><input type={showPassword ? 'text' : 'password'} name="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} placeholder={copy.passwordPlaceholder} data-testid="input-sign-in-password" /><button className="password-toggle" type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? copy.hidePassword : copy.showPassword} aria-pressed={showPassword} data-testid="button-toggle-sign-in-password">{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></span></label>
         {message && <p className="auth-message error" role="alert" data-testid="status-sign-in">{message}</p>}
         <button className="auth-submit" type="submit" disabled={isSubmitting} data-testid="button-submit-sign-in">{isSubmitting ? copy.authWorking : copy.signIn}</button>
       </form>
