@@ -13,4 +13,7 @@ export * from './customerFavoriteInput';
 export * from './customerOrder';
 export * from './customerOrderStatus';
 export * from './healthStatus';
+export * from './localizedText';
 export * from './loyaltyBalance';
+export * from './storeProduct';
+export * from './storeProductCategory';

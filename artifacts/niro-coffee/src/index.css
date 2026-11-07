@@ -128,6 +128,7 @@ button { color: inherit; }
 .section-intro { margin:0; max-width:300px; color:#737a70; font-size:13px; line-height:1.9; }
 .text-link { display:inline-flex; align-items:center; gap:9px; color:#243e33; font-weight:700; font-size:11px; text-decoration:none; border-bottom:1px solid #bd7057; padding-bottom:7px; white-space:nowrap; }
 .products-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:18px; direction:rtl; }
+.products-state { grid-column:1 / -1; padding:42px 16px; color:#6b746b; font-size:12px; text-align:center; }
 .product-card { min-width:0; }
 .product-visual { height:322px; position:relative; overflow:hidden; display:flex; justify-content:center; align-items:end; background:#e4dfd2; }
 .product-card:nth-child(2) .product-visual { background:#e5dacf; }

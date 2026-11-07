@@ -18,6 +18,68 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * @summary List products from the live catalog
+ */
+export const listProductsResponseIdMax = 80;
+
+export const listProductsResponseNameArMax = 240;
+
+export const listProductsResponseNameEnMax = 240;
+
+export const listProductsResponseOriginArMax = 240;
+
+export const listProductsResponseOriginEnMax = 240;
+
+export const listProductsResponsePriceMin = 0;
+
+export const listProductsResponseRoastArMax = 240;
+
+export const listProductsResponseRoastEnMax = 240;
+
+export const listProductsResponseTagArMax = 240;
+
+export const listProductsResponseTagEnMax = 240;
+
+export const listProductsResponseBagNameMax = 40;
+
+export const listProductsResponseWeightGramsMax = 10000;
+
+export const listProductsResponseImageUrlMax = 2048;
+
+export const listProductsResponseSortOrderMin = 0;
+
+
+
+export const ListProductsResponseItem = zod.object({
+  "id": zod.string().min(1).max(listProductsResponseIdMax),
+  "name": zod.object({
+  "ar": zod.string().min(1).max(listProductsResponseNameArMax),
+  "en": zod.string().min(1).max(listProductsResponseNameEnMax)
+}),
+  "origin": zod.object({
+  "ar": zod.string().min(1).max(listProductsResponseOriginArMax),
+  "en": zod.string().min(1).max(listProductsResponseOriginEnMax)
+}),
+  "price": zod.number().min(listProductsResponsePriceMin),
+  "roast": zod.object({
+  "ar": zod.string().min(1).max(listProductsResponseRoastArMax),
+  "en": zod.string().min(1).max(listProductsResponseRoastEnMax)
+}),
+  "category": zod.enum(['espresso', 'single', 'blend', 'drip']),
+  "tag": zod.object({
+  "ar": zod.string().min(1).max(listProductsResponseTagArMax),
+  "en": zod.string().min(1).max(listProductsResponseTagEnMax)
+}),
+  "bagName": zod.string().min(1).max(listProductsResponseBagNameMax),
+  "weightGrams": zod.number().int().min(1).max(listProductsResponseWeightGramsMax),
+  "imageUrl": zod.string().min(1).max(listProductsResponseImageUrlMax),
+  "isBestSeller": zod.boolean(),
+  "sortOrder": zod.number().int().min(listProductsResponseSortOrderMin)
+})
+export const ListProductsResponse = zod.array(ListProductsResponseItem)
+
+
+/**
  * @summary Get the signed-in customer's profile
  */
 export const GetAccountProfileResponse = zod.object({

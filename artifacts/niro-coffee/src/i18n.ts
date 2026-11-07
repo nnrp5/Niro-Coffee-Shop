@@ -28,6 +28,9 @@ export const translations = {
     shopKicker: 'قهوة تستحق التوقف',
     shopTitle: 'اختيارات هذا الأسبوع',
     shopIntro: 'محاصيل طازجة، نكهاتها تحكي عن الأرض التي نمت فيها.',
+    productsLoading: 'جارٍ تحميل المنتجات...',
+    productsLoadError: 'تعذر تحميل المنتجات. يرجى المحاولة لاحقاً.',
+    productsEmpty: 'لا توجد منتجات متاحة حالياً.',
     categoriesKicker: 'اعثر على طريقتك',
     categoriesTitle: 'قهوتك، كما تحبها',
     categoriesIntro: 'من إسبريسو الصباح إلى آخر كوب مقطّر في المساء.',
@@ -196,6 +199,9 @@ export const translations = {
     shopKicker: 'Coffee worth slowing down for',
     shopTitle: 'This week’s selection',
     shopIntro: 'Fresh harvests with flavors that tell the story of where they grew.',
+    productsLoading: 'Loading products...',
+    productsLoadError: 'Products could not be loaded. Please try again later.',
+    productsEmpty: 'No products are available right now.',
     categoriesKicker: 'Find your ritual',
     categoriesTitle: 'Coffee, your way',
     categoriesIntro: 'From morning espresso to the last pour-over of the evening.',
@@ -338,21 +344,6 @@ export const translations = {
     signUpSubtitle: 'Begin your journey with NOIR coffee',
   },
 } satisfies Record<Language, Record<string, string | ((value: number | string) => string) | string[]>>;
-
-export const productTranslations: Record<Language, Record<number, { name: string; origin: string; roast: string; tag: string }>> = {
-  ar: {
-    1: { name: 'إثيوبيا قوجي', origin: 'قوجي · إثيوبيا · معالجة طبيعية', roast: 'تحميص فاتح', tag: 'الأكثر طلباً' },
-    2: { name: 'برازيل سيرادو', origin: 'ميناس جيرايس · البرازيل', roast: 'تحميص متوسط', tag: 'موسمي' },
-    3: { name: 'خلطة نوير', origin: 'إثيوبيا × البرازيل · متوازنة', roast: 'تحميص متوسط', tag: 'خلطة البيت' },
-    4: { name: 'كولومبيا توليما', origin: 'توليما · كولومبيا · مغسولة', roast: 'تحميص فاتح', tag: 'دفعة محدودة' },
-  },
-  en: {
-    1: { name: 'Ethiopia Guji', origin: 'Guji · Ethiopia · Natural', roast: 'Light roast', tag: 'Bestseller' },
-    2: { name: 'Brazil Cerrado', origin: 'Minas Gerais · Brazil', roast: 'Medium roast', tag: 'Seasonal' },
-    3: { name: 'NOIR Blend', origin: 'Ethiopia × Brazil · Balanced', roast: 'Medium roast', tag: 'House blend' },
-    4: { name: 'Colombia Tolima', origin: 'Tolima · Colombia · Washed', roast: 'Light roast', tag: 'Limited batch' },
-  },
-};
 
 export const categoryTranslations: Record<Language, Record<string, { title: string; description: string }>> = {
   ar: {

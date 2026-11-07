@@ -6,27 +6,10 @@ import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { Redirect, Route, Router as WouterRouter, Switch, useLocation } from 'wouter';
-import { getGetAccountFavoritesQueryKey, getGetAccountLoyaltyQueryKey, getGetAccountOrdersQueryKey, getGetAccountProfileQueryKey, useGetAccountFavorites, useGetAccountLoyalty, useGetAccountOrders, useGetAccountProfile, useRemoveAccountFavorite, useSaveAccountFavorite, useUpdateAccountProfile } from '@workspace/api-client-react';
-import { categoryTranslations, productTranslations, reviewTranslations, translations, type Language } from './i18n';
+import { getGetAccountFavoritesQueryKey, getGetAccountLoyaltyQueryKey, getGetAccountOrdersQueryKey, getGetAccountProfileQueryKey, getListProductsQueryKey, useGetAccountFavorites, useGetAccountLoyalty, useGetAccountOrders, useGetAccountProfile, useListProducts, useRemoveAccountFavorite, useSaveAccountFavorite, useUpdateAccountProfile, type StoreProduct } from '@workspace/api-client-react';
+import { categoryTranslations, reviewTranslations, translations, type Language } from './i18n';
 
-type Product = {
-  id: number;
-  name: string;
-  origin: string;
-  price: number;
-  roast: string;
-  category: string;
-  tag: string;
-  bagName: string;
-};
-
-type CartLine = { product: Product; quantity: number };
-const products: Product[] = [
-  { id: 1, name: 'إثيوبيا قوجي', origin: 'قوجي · إثيوبيا · معالجة طبيعية', price: 5.643, roast: 'تحميص فاتح', category: 'single', tag: 'الأكثر طلباً', bagName: 'GUJI' },
-  { id: 2, name: 'برازيل سيرادو', origin: 'ميناس جيرايس · البرازيل', price: 4.896, roast: 'تحميص متوسط', category: 'espresso', tag: 'موسمي', bagName: 'CERRADO' },
-  { id: 3, name: 'خلطة نوير', origin: 'إثيوبيا × البرازيل · متوازنة', price: 5.311, roast: 'تحميص متوسط', category: 'blend', tag: 'خلطة البيت', bagName: 'NOIR' },
-  { id: 4, name: 'كولومبيا توليما', origin: 'توليما · كولومبيا · مغسولة', price: 5.975, roast: 'تحميص فاتح', category: 'drip', tag: 'دفعة محدودة', bagName: 'TOLIMA' },
-];
+type CartLine = { product: StoreProduct; quantity: number };
 
 const categoryLinks = ['espresso', 'single', 'blend', 'drip'].map((id, index) => ({
   id,
@@ -36,6 +19,18 @@ const categoryLinks = ['espresso', 'single', 'blend', 'drip'].map((id, index) =>
 
 const queryClient = new QueryClient();
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
+const localizeProduct = (product: StoreProduct, language: Language) => ({
+  name: product.name[language],
+  origin: product.origin[language],
+  roast: product.roast[language],
+  tag: product.tag[language],
+});
+const productImageUrl = (imageUrl: string) => {
+  if (/^https?:\/\//i.test(imageUrl)) return imageUrl;
+  return `${basePath}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
+};
+const formatWeight = (grams: number, language: Language) =>
+  language === 'ar' ? `${grams.toLocaleString('ar-KW')}غ` : `${grams.toLocaleString('en-KW')} g`;
 const kwdFormatters: Record<Language, Intl.NumberFormat> = {
   ar: new Intl.NumberFormat('ar-KW', { style: 'currency', currency: 'KWD', minimumFractionDigits: 3, maximumFractionDigits: 3 }),
   en: new Intl.NumberFormat('en-KW', { style: 'currency', currency: 'KWD', minimumFractionDigits: 3, maximumFractionDigits: 3 }),
@@ -75,6 +70,8 @@ function Storefront() {
   const { isSignedIn } = useUser();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const productsQuery = useListProducts({ query: { queryKey: getListProductsQueryKey(), retry: false } });
+  const products = productsQuery.data ?? [];
   const favoritesQuery = useGetAccountFavorites({ query: { enabled: !!isSignedIn, queryKey: getGetAccountFavoritesQueryKey() } });
   const loyaltyQuery = useGetAccountLoyalty({ query: { enabled: !!isSignedIn, queryKey: getGetAccountLoyaltyQueryKey() } });
   const saveFavorite = useSaveAccountFavorite();
@@ -105,17 +102,15 @@ function Storefront() {
   );
   const visibleProducts = useMemo(
     () => selectedCategory ? products.filter((product) => product.category === selectedCategory) : products,
-    [selectedCategory],
+    [products, selectedCategory],
   );
   const searchResults = useMemo(() => {
     const query = searchTerm.trim().toLocaleLowerCase(language === 'ar' ? 'ar' : 'en');
     if (!query) return products;
     return products.filter((product) => {
-      const arabic = productTranslations.ar[product.id];
-      const english = productTranslations.en[product.id];
-      return `${arabic.name} ${arabic.origin} ${english.name} ${english.origin} ${product.bagName}`.toLocaleLowerCase(language === 'ar' ? 'ar' : 'en').includes(query);
+      return `${product.name.ar} ${product.origin.ar} ${product.name.en} ${product.origin.en} ${product.bagName}`.toLocaleLowerCase(language === 'ar' ? 'ar' : 'en').includes(query);
     });
-  }, [searchTerm, language]);
+  }, [products, searchTerm, language]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -134,17 +129,17 @@ function Storefront() {
     window.setTimeout(() => setToastMessage(''), 2200);
   };
 
-  const addToCart = (product: Product) => {
+  const addToCart = (product: StoreProduct) => {
     setCart((current) => {
       const existing = current.find((line) => line.product.id === product.id);
       return existing
         ? current.map((line) => line.product.id === product.id ? { ...line, quantity: line.quantity + 1 } : line)
         : [...current, { product, quantity: 1 }];
     });
-    showToast(copy.addToCartToast(productTranslations[language][product.id].name));
+    showToast(copy.addToCartToast(localizeProduct(product, language).name));
   };
 
-  const changeQuantity = (id: number, amount: number) => {
+  const changeQuantity = (id: string, amount: number) => {
     setCart((current) => current
       .map((line) => line.product.id === id ? { ...line, quantity: line.quantity + amount } : line)
       .filter((line) => line.quantity > 0));
@@ -167,7 +162,7 @@ function Storefront() {
   };
 
   const currentReview = reviewTranslations[language][reviewIndex];
-  const toggleFavorite = (product: Product) => {
+  const toggleFavorite = (product: StoreProduct) => {
     if (!isSignedIn) { setLocation('/sign-in'); return; }
     const productId = String(product.id);
     const exists = (favoritesQuery.data ?? []).some((favorite) => favorite.productId === productId);
@@ -237,19 +232,22 @@ function Storefront() {
               <div className="section-intro">{copy.shopIntro}</div>
           </div>
           <div className="products-grid">
-            {visibleProducts.map((product) => {
-              const localizedProduct = productTranslations[language][product.id];
+            {productsQuery.isLoading ? <div className="products-state" role="status">{copy.productsLoading}</div>
+              : productsQuery.isError ? <div className="products-state" role="alert">{copy.productsLoadError}</div>
+                : visibleProducts.length === 0 ? <div className="products-state">{copy.productsEmpty}</div>
+                  : visibleProducts.map((product) => {
+              const localizedProduct = localizeProduct(product, language);
               return (
               <article className="product-card" key={product.id} data-testid={`card-product-${product.id}`}>
                 <div className="product-visual">
-                  <div className="product-photo"><img src={editorialImage} alt="" /></div>
+                  <div className="product-photo"><img src={productImageUrl(product.imageUrl)} alt={localizedProduct.name} /></div>
                   <span className="product-tag">{localizedProduct.tag}</span>
-                  <button className={`favorite-button ${(favoritesQuery.data ?? []).some((favorite) => favorite.productId === String(product.id)) ? 'is-favorite' : ''}`} data-testid={`button-favorite-${product.id}`} aria-label={isSignedIn ? copy.saveFavoriteSignedIn : copy.saveFavoriteSignedOut} onClick={() => toggleFavorite(product)}><Heart size={16} fill={(favoritesQuery.data ?? []).some((favorite) => favorite.productId === String(product.id)) ? 'currentColor' : 'none'} /></button>
+                  <button className={`favorite-button ${(favoritesQuery.data ?? []).some((favorite) => favorite.productId === product.id) ? 'is-favorite' : ''}`} data-testid={`button-favorite-${product.id}`} aria-label={isSignedIn ? copy.saveFavoriteSignedIn : copy.saveFavoriteSignedOut} onClick={() => toggleFavorite(product)}><Heart size={16} fill={(favoritesQuery.data ?? []).some((favorite) => favorite.productId === product.id) ? 'currentColor' : 'none'} /></button>
                   <div className="bag">
                     <span className="bag-seam" />
                     <span className="bag-brand">NOIR COFFEE</span>
                     <span className="bag-origin">{product.bagName}</span>
-                    <span className="bag-note">SPECIALTY · 250G</span>
+                    <span className="bag-note">SPECIALTY · {product.weightGrams}G</span>
                     <span className="bag-stamp">ن</span>
                   </div>
                 </div>
@@ -258,7 +256,7 @@ function Storefront() {
                   <span className="product-price">{formatKwd(product.price, language)}</span>
                 </div>
                 <div className="product-bottom">
-                  <span className="roast">{localizedProduct.roast} · {language === 'ar' ? '٢٥٠غ' : '250 g'}</span>
+                  <span className="roast">{localizedProduct.roast} · {formatWeight(product.weightGrams, language)}</span>
                     <button className="add-button" data-testid={`button-add-to-cart-${product.id}`} aria-label={copy.addProduct(localizedProduct.name)} onClick={() => addToCart(product)}><Plus size={16} /></button>
                 </div>
               </article>
@@ -308,8 +306,8 @@ function Storefront() {
             <div className="section-intro">{copy.bestSellersIntro}</div>
           </div>
           <div className="best-seller-list">
-            {products.slice(0, 3).map((product, index) => {
-              const localizedProduct = productTranslations[language][product.id];
+            {products.filter((product) => product.isBestSeller).slice(0, 3).map((product, index) => {
+              const localizedProduct = localizeProduct(product, language);
               return <button className="best-seller-row" data-testid={`best-seller-${product.id}`} key={product.id} onClick={() => { setSelectedCategory(product.category); document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth' }); }}>
                 <span className="best-index">0{index + 1}</span><span className="best-name">{localizedProduct.name}</span><span className="best-origin">{localizedProduct.origin}</span><span className="best-price">{formatKwd(product.price, language)}</span>{language === 'ar' ? <ChevronLeft size={17} /> : <ChevronRight size={17} />}
               </button>;
@@ -379,9 +377,9 @@ function Storefront() {
         {cart.length === 0 ? <div className="empty-cart"><Coffee size={33} strokeWidth={1.2} /><strong>{copy.emptyCartTitle}</strong><span>{copy.emptyCartDescription}</span><button className="button-primary" style={{ marginTop: 20 }} onClick={() => { setCartOpen(false); jumpToShop(); }}>{copy.browseCoffee} {language === 'ar' ? <ArrowLeft size={14} /> : <ArrowRight size={14} />}</button></div> : <>
           <div className="cart-lines">
             {cart.map(({ product, quantity }) => <div className="cart-line" key={product.id}>
-              {(() => { const localizedProduct = productTranslations[language][product.id]; return <>
+              {(() => { const localizedProduct = localizeProduct(product, language); return <>
               <div className="mini-bag">NOIR<br />{product.bagName}</div>
-              <div className="cart-line-copy"><strong>{localizedProduct.name}</strong><span>{formatKwd(product.price, language)} · {language === 'ar' ? '٢٥٠غ' : '250 g'}</span><div className="quantity">
+              <div className="cart-line-copy"><strong>{localizedProduct.name}</strong><span>{formatKwd(product.price, language)} · {formatWeight(product.weightGrams, language)}</span><div className="quantity">
                 <button aria-label={copy.addQuantity(localizedProduct.name)} data-testid={`button-increase-quantity-${product.id}`} onClick={() => changeQuantity(product.id, 1)}><Plus size={12} /></button><span data-testid={`text-quantity-${product.id}`}>{quantity}</span><button aria-label={copy.reduceQuantity(localizedProduct.name)} data-testid={`button-decrease-quantity-${product.id}`} onClick={() => changeQuantity(product.id, -1)}><Minus size={12} /></button>
               </div></div>
               <strong className="product-price">{formatKwd(product.price * quantity, language)}</strong>
@@ -412,7 +410,7 @@ function Storefront() {
       <div className={`search-panel ${searchOpen ? 'open' : ''}`} role="dialog" aria-label={copy.searchProducts} aria-modal="true">
         <div className="search-row"><Search size={19} /><input data-testid="input-store-search" autoFocus={searchOpen} value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder={copy.searchPlaceholder} /><button className="close-button" aria-label={copy.closeCart} data-testid="button-close-search" onClick={() => setSearchOpen(false)}><X size={16} /></button></div>
         <div className="search-results">
-          {searchResults.length ? searchResults.map((product) => <button className="search-result" key={product.id} onClick={() => { setSearchOpen(false); setSelectedCategory(product.category); document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth' }); }}>{productTranslations[language][product.id].name} · {formatKwd(product.price, language)}</button>) : <span className="search-empty">{copy.searchEmpty}</span>}
+          {searchResults.length ? searchResults.map((product) => <button className="search-result" key={product.id} onClick={() => { setSearchOpen(false); setSelectedCategory(product.category); document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth' }); }}>{localizeProduct(product, language).name} · {formatKwd(product.price, language)}</button>) : <span className="search-empty">{copy.searchEmpty}</span>}
         </div>
       </div>
       <div className={`toast ${toastMessage ? 'show' : ''}`} role="status">{toastMessage}</div>
@@ -432,6 +430,8 @@ function AccountPage() {
   const orders = useGetAccountOrders({ query: { queryKey: getGetAccountOrdersQueryKey() } });
   const loyalty = useGetAccountLoyalty({ query: { queryKey: getGetAccountLoyaltyQueryKey() } });
   const favorites = useGetAccountFavorites({ query: { queryKey: getGetAccountFavoritesQueryKey() } });
+  const productsQuery = useListProducts({ query: { queryKey: getListProductsQueryKey(), retry: false } });
+  const products = productsQuery.data ?? [];
   const updateProfile = useUpdateAccountProfile();
   const removeFavorite = useRemoveAccountFavorite();
   const [tab, setTab] = useState<AccountTab>('profile');
@@ -461,12 +461,15 @@ function AccountPage() {
     if (tab === 'profile') void profile.refetch();
     if (tab === 'orders' || tab === 'tracking') void orders.refetch();
     if (tab === 'loyalty') void loyalty.refetch();
-    if (tab === 'favorites') void favorites.refetch();
+    if (tab === 'favorites') {
+      void favorites.refetch();
+      void productsQuery.refetch();
+    }
   };
-  const isLoading = (tab === 'profile' && profile.isLoading) || ((tab === 'orders' || tab === 'tracking') && orders.isLoading) || (tab === 'loyalty' && loyalty.isLoading) || (tab === 'favorites' && favorites.isLoading);
-  const isError = (tab === 'profile' && profile.isError) || ((tab === 'orders' || tab === 'tracking') && orders.isError) || (tab === 'loyalty' && loyalty.isError) || (tab === 'favorites' && favorites.isError);
+  const isLoading = (tab === 'profile' && profile.isLoading) || ((tab === 'orders' || tab === 'tracking') && orders.isLoading) || (tab === 'loyalty' && loyalty.isLoading) || (tab === 'favorites' && (favorites.isLoading || productsQuery.isLoading));
+  const isError = (tab === 'profile' && profile.isError) || ((tab === 'orders' || tab === 'tracking') && orders.isError) || (tab === 'loyalty' && loyalty.isError) || (tab === 'favorites' && (favorites.isError || productsQuery.isError));
   const sectionTitle = accountNav.find((item) => item.id === tab)?.label ?? '';
-  const favoriteProducts = (favorites.data ?? []).map((favorite) => ({ favorite, product: products.find((item) => String(item.id) === favorite.productId) })).filter((item) => item.product);
+  const favoriteProducts = (favorites.data ?? []).map((favorite) => ({ favorite, product: products.find((item) => item.id === favorite.productId) })).filter((item) => item.product);
 
   return <div className={`account-shell ${language === 'en' ? 'lang-en' : ''}`} dir={language === 'ar' ? 'rtl' : 'ltr'}>
     <header className="account-topbar">
@@ -495,7 +498,19 @@ function AccountPage() {
           {tab === 'orders' && <section className="account-panel"><div className="panel-intro"><h2>{copy.orderHistoryTitle}</h2><p>{copy.orderHistoryDescription}</p></div>{!orders.data?.length ? <div className="account-empty" data-testid="state-orders-empty"><Package size={29} /><strong>{copy.noOrders}</strong><span>{copy.firstOrder}</span><a className="button-outline" href={`${basePath || ''}/#shop`}>{copy.discoverCoffee} {language === 'ar' ? <ArrowLeft size={14} /> : <ArrowRight size={14} />}</a></div> : <div className="order-list">{orders.data.map((order) => <article className="order-row" key={order.id} data-testid={`row-order-${order.id}`}><div><strong>{order.orderNumber}</strong><small>{new Date(order.placedAt).toLocaleDateString(language === 'ar' ? 'ar-KW' : 'en-KW')}</small></div><div><span className="order-status">{statusLabel[order.status] || order.status}</span><small>{order.itemsSummary.join(language === 'ar' ? '، ' : ', ')}</small></div><strong>{formatKwd(order.total, language)}</strong></article>)}</div>}</section>}
           {tab === 'tracking' && <section className="account-panel"><div className="panel-intro"><h2>{copy.orderJourney}</h2><p>{copy.trackingDescription}</p></div>{!orders.data?.length ? <div className="account-empty" data-testid="state-tracking-empty"><Truck size={29} /><strong>{copy.noShipments}</strong><span>{copy.trackingEmpty}</span></div> : <div className="tracking-list">{orders.data.map((order) => <article className="tracking-order" key={order.id} data-testid={`tracking-order-${order.id}`}><div className="tracking-order-head"><strong>{order.orderNumber}</strong><span className="order-status">{statusLabel[order.status]}</span></div><div className="tracking-steps">{[copy.orderPlaced, copy.processing, copy.shipped, copy.delivered].map((status, index) => { const sequence = ['order_placed', 'processing', 'shipped', 'delivered']; const active = sequence.indexOf(order.status) >= index; return <div className={active ? 'done' : ''} key={status}><span>{active ? <Check size={12} /> : index + 1}</span><small>{status}</small></div>; })}</div>{order.trackingNumber && <p className="tracking-number" data-testid={`tracking-number-${order.id}`}>{copy.trackingNumber} <b dir="ltr">{order.trackingNumber}</b></p>}</article>)}</div>}</section>}
           {tab === 'loyalty' && <section className="account-panel loyalty-panel"><div className="loyalty-card"><div><span>{copy.currentBalance}</span><strong data-testid="value-loyalty-points">{loyalty.data?.pointsBalance ?? '—'}</strong><small>{copy.points}</small></div><Award size={37} /></div><div className="loyalty-copy"><h2>{copy.loyaltyTitle}</h2><p>{copy.pointsCollected} {loyalty.data?.lifetimeEarned ?? '—'} {copy.pointsSoFar} {copy.usePointsPreview} {formatKwd(loyalty.data?.redemptionValuePer100Points ?? 0.083, language)}.</p></div><label className="points-preview-label">{copy.pointsPreviewLabel}<input type="number" min="0" max={pointsBalance} value={pointsPreview} onChange={(event) => setPointsPreview(event.target.value)} placeholder={copy.pointsInput} data-testid="input-points-preview" /></label><div className="points-preview" data-testid="value-points-preview"><span>{copy.previewValue}</span><strong>{formatKwd(previewKwd, language)}</strong></div><p className="preview-note">{copy.previewOnlyNote}</p></section>}
-          {tab === 'favorites' && <section className="account-panel"><div className="panel-intro"><h2>{copy.savedCoffeesTitle}</h2><p>{copy.savedCoffeesDescription}</p></div>{!favoriteProducts.length ? <div className="account-empty" data-testid="state-favorites-empty"><Heart size={29} /><strong>{copy.favoritesEmptyTitle}</strong><span>{copy.favoritesEmptyDescription}</span><a className="button-outline" href={`${basePath || ''}/#shop`}>{copy.browseProducts} {language === 'ar' ? <ArrowLeft size={14} /> : <ArrowRight size={14} />}</a></div> : <div className="saved-grid">{favoriteProducts.map(({ favorite, product }) => product && <article className="saved-product" key={favorite.productId} data-testid={`saved-product-${favorite.productId}`}><div className="saved-product-image"><img src={editorialImage} alt="" /><span>{productTranslations[language][product.id].tag}</span></div><h3>{productTranslations[language][product.id].name}</h3><p>{productTranslations[language][product.id].origin}</p><div><strong>{formatKwd(product.price, language)}</strong><button data-testid={`button-remove-favorite-${favorite.productId}`} onClick={() => removeFavorite.mutate({ productId: favorite.productId }, { onSuccess: () => void queryClient.invalidateQueries({ queryKey: getGetAccountFavoritesQueryKey() }) })}><Heart size={15} fill="currentColor" /> {copy.removeFavorite}</button></div></article>)}</div>}</section>}
+          {tab === 'favorites' && <section className="account-panel">
+            <div className="panel-intro"><h2>{copy.savedCoffeesTitle}</h2><p>{copy.savedCoffeesDescription}</p></div>
+            {!favoriteProducts.length ? <div className="account-empty" data-testid="state-favorites-empty"><Heart size={29} /><strong>{copy.favoritesEmptyTitle}</strong><span>{copy.favoritesEmptyDescription}</span><a className="button-outline" href={`${basePath || ''}/#shop`}>{copy.browseProducts} {language === 'ar' ? <ArrowLeft size={14} /> : <ArrowRight size={14} />}</a></div>
+              : <div className="saved-grid">{favoriteProducts.map(({ favorite, product }) => {
+                if (!product) return null;
+                const localizedProduct = localizeProduct(product, language);
+                return <article className="saved-product" key={favorite.productId} data-testid={`saved-product-${favorite.productId}`}>
+                  <div className="saved-product-image"><img src={productImageUrl(product.imageUrl)} alt={localizedProduct.name} /><span>{localizedProduct.tag}</span></div>
+                  <h3>{localizedProduct.name}</h3><p>{localizedProduct.origin}</p>
+                  <div><strong>{formatKwd(product.price, language)}</strong><button data-testid={`button-remove-favorite-${favorite.productId}`} onClick={() => removeFavorite.mutate({ productId: favorite.productId }, { onSuccess: () => void queryClient.invalidateQueries({ queryKey: getGetAccountFavoritesQueryKey() }) })}><Heart size={15} fill="currentColor" /> {copy.removeFavorite}</button></div>
+                </article>;
+              })}</div>}
+          </section>}
           {tab === 'settings' && <section className="account-panel settings-panel"><div className="settings-mark"><Settings size={23} /></div><h2>{copy.settingsTitle}</h2><p>{copy.settingsDescription}</p><div className="settings-detail"><span>{copy.linkedEmail}</span><strong>{user?.primaryEmailAddress?.emailAddress || '—'}</strong></div><div className="settings-detail"><span>{copy.sessionStatus}</span><strong>{copy.sessionActive}</strong></div><button className="button-outline" data-testid="button-settings-sign-out" onClick={() => void signOut({ redirectUrl: basePath || '/' })}><LogOut size={15} /> {copy.signOut}</button></section>}
         </>}
       </main>

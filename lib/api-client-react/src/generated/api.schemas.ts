@@ -5,6 +5,62 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface LocalizedText {
+  /**
+     * @minLength 1
+     * @maxLength 240
+     */
+  ar: string;
+  /**
+     * @minLength 1
+     * @maxLength 240
+     */
+  en: string;
+}
+
+export type StoreProductCategory = typeof StoreProductCategory[keyof typeof StoreProductCategory];
+
+
+export const StoreProductCategory = {
+  espresso: 'espresso',
+  single: 'single',
+  blend: 'blend',
+  drip: 'drip',
+} as const;
+
+export interface StoreProduct {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  id: string;
+  name: LocalizedText;
+  origin: LocalizedText;
+  /** @minimum 0 */
+  price: number;
+  roast: LocalizedText;
+  category: StoreProductCategory;
+  tag: LocalizedText;
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  bagName: string;
+  /**
+     * @minimum 1
+     * @maximum 10000
+     */
+  weightGrams: number;
+  /**
+     * @minLength 1
+     * @maxLength 2048
+     */
+  imageUrl: string;
+  isBestSeller: boolean;
+  /** @minimum 0 */
+  sortOrder: number;
+}
+
 export interface HealthStatus {
   status: string;
 }

@@ -1,0 +1,1 @@
+- [Authentication and catalog storage](auth-and-catalog-storage.md) — Keep Clerk for customer accounts; MongoDB is for the coffee catalog, not passwords.
