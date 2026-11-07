@@ -187,7 +187,15 @@ function Storefront() {
           <div className="nav-actions">
             <LanguageToggle />
             <button className="icon-button" aria-label={copy.searchProducts} data-testid="button-open-search" onClick={() => setSearchOpen(true)}><Search size={18} strokeWidth={1.6} /></button>
-            <button className="icon-button" aria-label={isSignedIn ? copy.account : copy.signIn} data-testid="link-account" onClick={() => setLocation(isSignedIn ? '/account' : '/sign-in')}><UserRound size={18} strokeWidth={1.6} /></button>
+            {isSignedIn ? (
+              <a className="nav-auth-link nav-auth-account" href={`${basePath || ''}/account`} data-testid="link-account">{copy.account}</a>
+            ) : (
+              <div className="nav-auth-links">
+                <a className="nav-auth-link" href={`${basePath || ''}/sign-in`} data-testid="link-sign-in">{copy.signIn}</a>
+                <span className="nav-auth-separator" aria-hidden="true">-</span>
+                <a className="nav-auth-link nav-auth-sign-up" href={`${basePath || ''}/sign-up`} data-testid="link-sign-up">{copy.signUpNav}</a>
+              </div>
+            )}
             <button className="icon-button" aria-label={copy.openCart(cartCount)} data-testid="button-open-cart" onClick={() => setCartOpen(true)}>
               <ShoppingBag size={18} strokeWidth={1.6} />
               {cartCount > 0 && <span className="cart-count">{cartCount}</span>}

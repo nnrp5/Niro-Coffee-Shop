@@ -18,14 +18,7 @@ if (IS_DEVELOPMENT_HOST) {
             .map((cacheName) => caches.delete(cacheName)),
         );
 
-        const windows = await self.clients.matchAll({
-          type: 'window',
-          includeUncontrolled: true,
-        });
         await self.registration.unregister();
-        await Promise.all(
-          windows.map((client) => client.navigate(client.url).catch(() => null)),
-        );
       })(),
     );
   });
