@@ -2,6 +2,7 @@ import { ListProductsResponse } from "@workspace/api-zod";
 import { Router, type IRouter } from "express";
 import type { Document } from "mongodb";
 import { getMongoDatabase } from "../lib/mongo";
+import { roundKwdPrice } from "../lib/pricing";
 
 const router: IRouter = Router();
 
@@ -54,7 +55,12 @@ router.get("/products", async (req, res): Promise<void> => {
       return;
     }
 
-    res.json(parsedProducts.data);
+    res.json(
+      parsedProducts.data.map((product) => ({
+        ...product,
+        price: roundKwdPrice(product.price),
+      })),
+    );
   } catch (error) {
     req.log.error(
       { errorName: error instanceof Error ? error.name : "UnknownError" },

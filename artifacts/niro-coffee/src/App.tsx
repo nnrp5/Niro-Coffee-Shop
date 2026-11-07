@@ -34,7 +34,7 @@ const kwdFormatters: Record<Language, Intl.NumberFormat> = {
   en: new Intl.NumberFormat('en-KW', { style: 'currency', currency: 'KWD', minimumFractionDigits: 3, maximumFractionDigits: 3 }),
 };
 const formatKwd = (amount: number, language: Language) => kwdFormatters[language].format(amount);
-const freeShippingThreshold = 20.747;
+const freeShippingThreshold = 20.5;
 const LanguageContext = createContext<{ language: Language; setLanguage: (language: Language) => void } | null>(null);
 function useLanguage() {
   const context = useContext(LanguageContext);
