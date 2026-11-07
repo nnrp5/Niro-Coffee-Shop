@@ -1,4 +1,36 @@
-const CACHE_NAME = 'noir-coffee-shell-v2';
+const IS_DEVELOPMENT_HOST =
+  self.location.hostname.endsWith('.replit.dev') ||
+  self.location.hostname === 'localhost' ||
+  self.location.hostname === '127.0.0.1';
+
+if (IS_DEVELOPMENT_HOST) {
+  self.addEventListener('install', (event) => {
+    event.waitUntil(self.skipWaiting());
+  });
+
+  self.addEventListener('activate', (event) => {
+    event.waitUntil(
+      (async () => {
+        const cacheNames = await caches.keys();
+        await Promise.all(
+          cacheNames
+            .filter((cacheName) => cacheName.startsWith('noir-coffee-'))
+            .map((cacheName) => caches.delete(cacheName)),
+        );
+
+        const windows = await self.clients.matchAll({
+          type: 'window',
+          includeUncontrolled: true,
+        });
+        await self.registration.unregister();
+        await Promise.all(
+          windows.map((client) => client.navigate(client.url).catch(() => null)),
+        );
+      })(),
+    );
+  });
+} else {
+const CACHE_NAME = 'noir-coffee-shell-v3';
 const APP_ROOT = new URL('./', self.registration.scope).href;
 const PRECACHE_URLS = [
   APP_ROOT,
@@ -90,3 +122,4 @@ self.addEventListener('fetch', (event) => {
     );
   }
 });
+}

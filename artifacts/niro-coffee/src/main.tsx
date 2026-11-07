@@ -13,6 +13,7 @@ if ('serviceWorker' in navigator && window.isSecureContext) {
         const registration = await navigator.serviceWorker.getRegistration(appRoot);
         const hadController = Boolean(navigator.serviceWorker.controller);
 
+        await registration?.update().catch(() => undefined);
         await registration?.unregister();
         const cacheNames = await caches.keys();
         await Promise.all(
