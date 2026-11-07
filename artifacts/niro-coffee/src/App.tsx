@@ -175,7 +175,7 @@ function Storefront() {
             {mobileNavOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
           <a className="brand" href="#home" aria-label="NOIR Coffee home" data-testid="link-home">
-            <span className="brand-mark">ن</span><span className="brand-word">NOIR</span>
+            <span className="brand-word">NOIR</span>
           </a>
           <nav className={`main-nav ${mobileNavOpen ? 'mobile-open' : ''}`} aria-label={copy.navigation}>
             <a href="#home" data-testid="link-nav-home" onClick={() => setMobileNavOpen(false)}>{copy.home}</a>
@@ -251,7 +251,6 @@ function Storefront() {
                     <span className="bag-brand">NOIR COFFEE</span>
                     <span className="bag-origin">{product.bagName}</span>
                     <span className="bag-note">SPECIALTY · {product.weightGrams}G</span>
-                    <span className="bag-stamp">ن</span>
                   </div>
                 </div>
                 <div className="product-meta">
@@ -358,7 +357,7 @@ function Storefront() {
       <footer className="footer">
         <div className="footer-main">
           <div className="footer-brand">
-            <a className="brand" href="#home"><span className="brand-mark">ن</span><span className="brand-word">NOIR</span></a>
+            <a className="brand" href="#home"><span className="brand-word">NOIR</span></a>
             <p>{copy.footerBrand}</p>
             <div className="socials">
               <a href="https://www.instagram.com/" target="_blank" rel="noreferrer" aria-label="Instagram"><Instagram size={14} /></a>
@@ -504,7 +503,7 @@ function AccountPage() {
 
   return <div className={`account-shell ${language === 'en' ? 'lang-en' : ''}`} dir={language === 'ar' ? 'rtl' : 'ltr'}>
     <header className="account-topbar">
-      <a className="brand" href={basePath || '/'} data-testid="link-account-home"><span className="brand-mark">ن</span><span className="brand-word">NOIR</span></a>
+      <a className="brand" href={basePath || '/'} data-testid="link-account-home"><span className="brand-word">NOIR</span></a>
       <a className="account-store-link" href={`${basePath || ''}/`} data-testid="link-back-store">{copy.accountBackToStore} {language === 'ar' ? <ArrowLeft size={15} /> : <ArrowRight size={15} />}</a>
       <LanguageToggle />
     </header>
@@ -587,9 +586,8 @@ function SignInPage() {
   };
   if (user) return <Redirect to="/" />;
   return <div className={`auth-screen ${language === 'en' ? 'lang-en' : ''}`} dir={language === 'ar' ? 'rtl' : 'ltr'}>
-    <div className="auth-top"><a className="auth-brand brand" href={basePath || '/'}><span className="brand-mark">ن</span><span className="brand-word">NOIR</span></a><LanguageToggle /></div>
+    <div className="auth-top"><a className="auth-brand brand" href={basePath || '/'}><span className="brand-word">NOIR</span></a><LanguageToggle /></div>
     <section className="auth-card">
-      <span className="auth-emblem">ن</span>
       <p className="auth-tagline">{copy.signInTagline}</p>
       <h1>{copy.signInTitle}</h1>
       <p className="auth-subtitle">{copy.signInSubtitle}</p>
@@ -644,9 +642,8 @@ function SignUpPage() {
   };
   if (user) return <Redirect to="/" />;
   return <div className={`auth-screen ${language === 'en' ? 'lang-en' : ''}`} dir={language === 'ar' ? 'rtl' : 'ltr'}>
-    <div className="auth-top"><a className="auth-brand brand" href={basePath || '/'}><span className="brand-mark">ن</span><span className="brand-word">NOIR</span></a><LanguageToggle /></div>
+    <div className="auth-top"><a className="auth-brand brand" href={basePath || '/'}><span className="brand-word">NOIR</span></a><LanguageToggle /></div>
     <section className="auth-card">
-      <span className="auth-emblem">ن</span>
       <p className="auth-tagline">{copy.signUpTagline}</p>
       <h1>{copy.signUpTitle}</h1>
       <p className="auth-subtitle">{copy.signUpSubtitle}</p>
