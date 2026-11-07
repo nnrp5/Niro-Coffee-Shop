@@ -23,7 +23,7 @@ if (IS_DEVELOPMENT_HOST) {
     );
   });
 } else {
-const CACHE_NAME = 'noir-coffee-shell-v3';
+const CACHE_NAME = 'noir-coffee-shell-v4';
 const APP_ROOT = new URL('./', self.registration.scope).href;
 const PRECACHE_URLS = [
   APP_ROOT,
