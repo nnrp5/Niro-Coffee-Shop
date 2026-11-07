@@ -21,20 +21,44 @@ if (Number.isNaN(port) || port <= 0) {
 
 const basePath = process.env.BASE_PATH;
 
-const supabaseKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim();
+const rawSupabaseKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim() ?? '';
+const assignmentMatch = rawSupabaseKey.match(
+  /^(?:VITE_SUPABASE_PUBLISHABLE_KEY|SUPABASE_PUBLISHABLE_KEY)\s*=\s*([\s\S]+)$/i,
+);
+const assignedValue = (assignmentMatch?.[1] ?? rawSupabaseKey).trim();
+const wrappedValue = assignedValue.match(/^(['"])([\s\S]*)\1$/);
+const supabaseKey = (wrappedValue?.[2] ?? assignedValue).trim();
 let isPublicKey = false;
+let isPrivilegedKey = supabaseKey.startsWith('sb_secret_');
 if (supabaseKey) {
   isPublicKey = supabaseKey.startsWith('sb_publishable_');
   if (!isPublicKey && supabaseKey.split('.').length === 3) {
     try {
-      isPublicKey = JSON.parse(Buffer.from(supabaseKey.split('.')[1], 'base64url').toString()).role === 'anon';
+      const legacyRole = JSON.parse(Buffer.from(supabaseKey.split('.')[1], 'base64url').toString()).role;
+      isPublicKey = legacyRole === 'anon';
+      isPrivilegedKey = legacyRole === 'service_role';
     } catch {
       isPublicKey = false;
     }
   }
-  if (!isPublicKey) {
-    console.warn('Supabase public key configuration is invalid. Authentication is disabled; the rejected key will not be sent to browsers.');
-  }
+}
+let supabaseUrlIsValid = false;
+try {
+  supabaseUrlIsValid = new URL(process.env.VITE_SUPABASE_URL?.trim() ?? '').protocol === 'https:';
+} catch {
+  supabaseUrlIsValid = false;
+}
+const supabaseAuthConfigStatus = !supabaseKey
+  ? 'key_missing'
+  : isPrivilegedKey
+    ? 'privileged_key_rejected'
+    : !isPublicKey
+      ? 'key_unrecognized'
+      : !supabaseUrlIsValid
+        ? 'url_missing_or_invalid'
+        : 'ready';
+if (supabaseAuthConfigStatus !== 'ready') {
+  console.warn(`Supabase authentication configuration status: ${supabaseAuthConfigStatus}. No rejected key is exposed to the browser.`);
 }
 // Scrub rejected values before Vite exposes any VITE_ environment variables.
 const publicSupabaseKey = isPublicKey ? supabaseKey! : '';
@@ -50,6 +74,7 @@ export default defineConfig({
   base: basePath,
   define: {
     'import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY': JSON.stringify(publicSupabaseKey),
+    'import.meta.env.VITE_SUPABASE_CONFIG_STATUS': JSON.stringify(supabaseAuthConfigStatus),
   },
   plugins: [
     react(),
