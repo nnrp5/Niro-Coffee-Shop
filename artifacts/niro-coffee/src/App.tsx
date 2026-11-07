@@ -1,13 +1,11 @@
 import { createContext, type FormEvent, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, ArrowUpLeft, Coffee, Instagram, Menu, Minus, Plus, Search, ShoppingBag, X, Heart, UserRound, Package, Award, Settings, LogOut, Truck, BadgeCheck, ChevronLeft, ChevronRight, Check, RefreshCw } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUpLeft, Coffee, Eye, EyeOff, Instagram, Menu, Minus, Plus, Search, ShoppingBag, X, Heart, UserRound, Package, Award, Settings, LogOut, Truck, BadgeCheck, ChevronLeft, ChevronRight, Check, RefreshCw } from 'lucide-react';
 import editorialImage from './assets/niro-coffee-editorial.jpg';
-import { ClerkProvider, SignIn, SignUp, Show, useClerk, useUser } from '@clerk/react';
-import { publishableKeyFromHost } from '@clerk/react/internal';
-import { shadcn } from '@clerk/themes';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { Redirect, Route, Router as WouterRouter, Switch, useLocation } from 'wouter';
 import { getGetAccountFavoritesQueryKey, getGetAccountLoyaltyQueryKey, getGetAccountOrdersQueryKey, getGetAccountProfileQueryKey, getListProductsQueryKey, useGetAccountFavorites, useGetAccountLoyalty, useGetAccountOrders, useGetAccountProfile, useListProducts, useRemoveAccountFavorite, useSaveAccountFavorite, useUpdateAccountProfile, type StoreProduct } from '@workspace/api-client-react';
 import { categoryTranslations, reviewTranslations, translations, type Language } from './i18n';
+import { AuthProvider, supabase, useAuth } from './auth';
 
 type CartLine = { product: StoreProduct; quantity: number };
 
@@ -37,8 +35,6 @@ const kwdFormatters: Record<Language, Intl.NumberFormat> = {
 };
 const formatKwd = (amount: number, language: Language) => kwdFormatters[language].format(amount);
 const freeShippingThreshold = 20.747;
-const clerkPubKey = publishableKeyFromHost(window.location.hostname, import.meta.env.VITE_CLERK_PUBLISHABLE_KEY);
-const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 const LanguageContext = createContext<{ language: Language; setLanguage: (language: Language) => void } | null>(null);
 function useLanguage() {
   const context = useContext(LanguageContext);
@@ -58,16 +54,18 @@ function LanguageToggle() {
   }} aria-label={language === 'ar' ? 'Switch language to English' : 'تغيير اللغة إلى العربية'} data-testid="button-language-toggle">{language === 'ar' ? 'EN' : 'عربي'}</button>;
 }
 function stripBase(path: string) { return basePath && path.startsWith(basePath) ? path.slice(basePath.length) || '/' : path; }
-if (!clerkPubKey) throw new Error('Missing VITE_CLERK_PUBLISHABLE_KEY for NOIR account sign-in.');
 
-function HomeRedirect() {
-  return <><Show when="signed-in"><Redirect to="/account" /></Show><Show when="signed-out"><Storefront /></Show></>;
+function HomeRoute() {
+  const { isLoaded, user } = useAuth();
+  if (!isLoaded) return <div className="account-route-loading" data-testid="state-auth-loading"><i /><i /></div>;
+  return user ? <Storefront /> : <SignInPage />;
 }
 
 function Storefront() {
   const { language } = useLanguage();
   const copy = translations[language];
-  const { isSignedIn } = useUser();
+  const { user } = useAuth();
+  const isSignedIn = Boolean(user);
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const productsQuery = useListProducts({ query: { queryKey: getListProductsQueryKey(), retry: false } });
@@ -423,8 +421,8 @@ type AccountTab = 'profile' | 'orders' | 'tracking' | 'loyalty' | 'favorites' | 
 function AccountPage() {
   const { language } = useLanguage();
   const copy = translations[language];
-  const { user, isLoaded } = useUser();
-  const { signOut } = useClerk();
+  const { user, signOut } = useAuth();
+  const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const profile = useGetAccountProfile({ query: { queryKey: getGetAccountProfileQueryKey() } });
   const orders = useGetAccountOrders({ query: { queryKey: getGetAccountOrdersQueryKey() } });
@@ -439,12 +437,34 @@ function AccountPage() {
   const [phone, setPhone] = useState('');
   const [profileMessage, setProfileMessage] = useState('');
   const [pointsPreview, setPointsPreview] = useState('');
+  const [customerRole, setCustomerRole] = useState<'admin' | 'customer' | null>(null);
+  const authDisplayName = typeof user?.user_metadata?.full_name === 'string'
+    ? user.user_metadata.full_name
+    : user?.email?.split('@')[0] ?? '';
   useEffect(() => {
     if (profile.data) {
-      setFullName(profile.data.fullName || user?.fullName || '');
+      setFullName(profile.data.fullName || authDisplayName);
       setPhone(profile.data.phone || '');
-    } else if (user?.fullName) setFullName(user.fullName);
-  }, [profile.data, user?.fullName]);
+    } else if (authDisplayName) setFullName(authDisplayName);
+  }, [profile.data, authDisplayName]);
+  useEffect(() => {
+    let active = true;
+    if (!user?.id) {
+      setCustomerRole(null);
+      return () => { active = false; };
+    }
+    void supabase.from('customer_profiles')
+      .select('role')
+      .eq('customer_id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (active) setCustomerRole(data?.role === 'admin' ? 'admin' : data ? 'customer' : null);
+      })
+      .catch(() => {
+        if (active) setCustomerRole(null);
+      });
+    return () => { active = false; };
+  }, [user?.id]);
   const pointsBalance = loyalty.data?.pointsBalance ?? 0;
   const previewPoints = Math.min(pointsBalance, Math.max(0, Number(pointsPreview) || 0));
   const previewKwd = Math.floor((previewPoints / 100) * (loyalty.data?.redemptionValuePer100Points ?? 0.083) * 1000) / 1000;
@@ -479,18 +499,18 @@ function AccountPage() {
     </header>
     <div className="account-layout">
       <aside className="account-sidebar">
-        <div className="account-welcome"><span className="account-avatar">{(fullName || user?.firstName || (language === 'ar' ? 'ن' : 'N')).slice(0, 1)}</span><div><small>{copy.welcome}</small><strong data-testid="text-account-name">{fullName || user?.fullName || copy.guestName}</strong></div></div>
+        <div className="account-welcome"><span className="account-avatar">{(fullName || authDisplayName || (language === 'ar' ? 'ن' : 'N')).slice(0, 1)}</span><div><small>{copy.welcome}</small><strong data-testid="text-account-name">{fullName || authDisplayName || copy.guestName}</strong></div></div>
         <nav aria-label={copy.accountMenu}>{accountNav.map(({ id, label, icon: Icon }) => <button key={id} className={tab === id ? 'active' : ''} data-testid={`account-nav-${id}`} onClick={() => setTab(id)}><Icon size={17} /><span>{label}</span>{language === 'ar' ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}</button>)}</nav>
-        <button className="account-logout" data-testid="button-sign-out" onClick={() => void signOut({ redirectUrl: basePath || '/' })}><LogOut size={16} /> {copy.signOut}</button>
+        <button className="account-logout" data-testid="button-sign-out" onClick={() => void signOut().then(() => setLocation('/sign-in')).catch(() => setProfileMessage(copy.signOutError))}><LogOut size={16} /> {copy.signOut}</button>
       </aside>
       <main className="account-content">
-        <div className="account-heading"><div><div className="section-kicker">{copy.yourSpace}</div><h1>{sectionTitle}</h1></div><span className="account-email" data-testid="text-account-email">{user?.primaryEmailAddress?.emailAddress || ''}</span></div>
+        <div className="account-heading"><div><div className="section-kicker">{copy.yourSpace}</div><h1>{sectionTitle}</h1></div><div className="account-heading-meta">{customerRole === 'admin' && <span className="account-role" data-testid="badge-admin">{copy.adminRole}</span>}<span className="account-email" data-testid="text-account-email">{user?.email || ''}</span></div></div>
         {isLoading ? <div className="account-skeleton" aria-label={copy.loadingAccount} data-testid="state-account-loading"><i /><i /><i /></div> : isError ? <div className="account-state error" data-testid="state-account-error"><strong>{copy.accountLoadError}</strong><span>{copy.connectionRetry}</span><button className="button-outline" onClick={refetchAll}><RefreshCw size={14} /> {copy.retry}</button></div> : <>
           {tab === 'profile' && <section className="account-panel">
             <div className="panel-intro"><h2>{copy.profileIntroTitle}</h2><p>{copy.profileIntroDescription}</p></div>
-            <form className="profile-form" data-testid="form-profile" onSubmit={(event) => { event.preventDefault(); updateProfile.mutate({ data: { fullName, phone } }, { onSuccess: () => { setProfileMessage(copy.profileSaved); void queryClient.invalidateQueries({ queryKey: getGetAccountProfileQueryKey() }); }, onError: () => setProfileMessage(copy.profileSaveError) }); }}>
+            <form className="profile-form" data-testid="form-profile" onSubmit={(event) => { event.preventDefault(); updateProfile.mutate({ data: { fullName, phone } }, { onSuccess: async () => { const { error } = await supabase.from('customer_profiles').update({ customer_name: fullName.trim() }).eq('customer_id', user?.id ?? ''); if (error) { setProfileMessage(copy.profileSaveError); return; } setProfileMessage(copy.profileSaved); void queryClient.invalidateQueries({ queryKey: getGetAccountProfileQueryKey() }); }, onError: () => setProfileMessage(copy.profileSaveError) }); }}>
               <label>{copy.fullName}<input data-testid="input-profile-name" value={fullName} onChange={(event) => setFullName(event.target.value)} required maxLength={120} /></label>
-              <label>{copy.email}<input value={user?.primaryEmailAddress?.emailAddress || ''} readOnly aria-label={copy.emailFromClerk} /></label>
+              <label>{copy.email}<input value={user?.email || ''} readOnly aria-label={copy.emailFromAuth} /></label>
               <label>{copy.phone}<input data-testid="input-profile-phone" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="+965 5xxx xxxx" maxLength={40} dir="ltr" /></label>
               <div className="profile-actions"><span role="status" data-testid="status-profile-save">{profileMessage}</span><button className="button-primary" type="submit" disabled={updateProfile.isPending}>{updateProfile.isPending ? copy.saving : copy.saveChanges} <Check size={15} /></button></div>
             </form>
@@ -511,7 +531,7 @@ function AccountPage() {
                 </article>;
               })}</div>}
           </section>}
-          {tab === 'settings' && <section className="account-panel settings-panel"><div className="settings-mark"><Settings size={23} /></div><h2>{copy.settingsTitle}</h2><p>{copy.settingsDescription}</p><div className="settings-detail"><span>{copy.linkedEmail}</span><strong>{user?.primaryEmailAddress?.emailAddress || '—'}</strong></div><div className="settings-detail"><span>{copy.sessionStatus}</span><strong>{copy.sessionActive}</strong></div><button className="button-outline" data-testid="button-settings-sign-out" onClick={() => void signOut({ redirectUrl: basePath || '/' })}><LogOut size={15} /> {copy.signOut}</button></section>}
+          {tab === 'settings' && <section className="account-panel settings-panel"><div className="settings-mark"><Settings size={23} /></div><h2>{copy.settingsTitle}</h2><p>{copy.settingsDescription}</p><div className="settings-detail"><span>{copy.linkedEmail}</span><strong>{user?.email || '—'}</strong></div><div className="settings-detail"><span>{copy.sessionStatus}</span><strong>{copy.sessionActive}</strong></div><button className="button-outline" data-testid="button-settings-sign-out" onClick={() => void signOut().then(() => setLocation('/sign-in')).catch(() => setProfileMessage(copy.signOutError))}><LogOut size={15} /> {copy.signOut}</button></section>}
         </>}
       </main>
     </div>
@@ -519,56 +539,126 @@ function AccountPage() {
 }
 
 function AccountRoute() {
-  const { isLoaded, isSignedIn } = useUser();
+  const { isLoaded, user } = useAuth();
   if (!isLoaded) return <div className="account-route-loading" data-testid="state-auth-loading"><i /><i /></div>;
-  if (!isSignedIn) return <Redirect to="/sign-in" />;
+  if (!user) return <Redirect to="/sign-in" />;
   return <AccountPage />;
 }
 
-const clerkAppearance = {
-  theme: shadcn,
-  cssLayerName: 'clerk',
-  options: { logoPlacement: 'inside' as const, logoLinkUrl: basePath || '/', logoImageUrl: `${window.location.origin}${basePath}/logo.svg` },
-  variables: { colorPrimary: '#344c3d', colorForeground: '#243e33', colorMutedForeground: '#737a70', colorDanger: '#a35f48', colorBackground: '#f6f3e9', colorInput: '#f0ecdf', colorInputForeground: '#243e33', colorNeutral: '#d8d2c5', fontFamily: "'DM Sans', 'Noto Sans Arabic', sans-serif", borderRadius: '1rem' },
-  elements: { rootBox: 'w-full flex justify-center', cardBox: 'bg-[#f6f3e9] rounded-2xl w-[440px] max-w-full overflow-hidden', card: '!shadow-none !border-0 !bg-transparent !rounded-none', footer: '!shadow-none !border-0 !bg-transparent !rounded-none', headerTitle: 'text-[#243e33]', headerSubtitle: 'text-[#737a70]', socialButtonsBlockButtonText: 'text-[#243e33]', formFieldLabel: 'text-[#243e33]', footerActionLink: 'text-[#a35f48]', footerActionText: 'text-[#737a70]', dividerText: 'text-[#737a70]', identityPreviewEditButton: 'text-[#a35f48]', formFieldSuccessText: 'text-[#344c3d]', alertText: 'text-[#243e33]', logoBox: 'rounded-full', logoImage: 'rounded-full', socialButtonsBlockButton: 'border-[#d8d2c5] bg-[#f6f3e9]', formButtonPrimary: 'bg-[#344c3d] text-[#f6f3e9]', formFieldInput: 'bg-[#f0ecdf] text-[#243e33] border-[#d8d2c5]', footerAction: 'text-[#737a70]', dividerLine: 'bg-[#d8d2c5]', alert: 'bg-[#f0ecdf]', otpCodeFieldInput: 'bg-[#f0ecdf] text-[#243e33]', formFieldRow: 'text-[#243e33]', main: 'text-[#243e33]' },
-};
 function SignInPage() {
   const { language } = useLanguage();
   const copy = translations[language];
-  return <div className={`auth-screen ${language === 'en' ? 'lang-en' : ''}`} dir={language === 'ar' ? 'rtl' : 'ltr'}><a className="auth-brand brand" href={basePath || '/'}><span className="brand-mark">ن</span><span className="brand-word">NOIR</span></a><LanguageToggle /><p>{copy.signInTagline}</p><SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} /></div>;
+  const { user } = useAuth();
+  const [, setLocation] = useLocation();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [message, setMessage] = useState('');
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setMessage('');
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      if (error) setMessage(copy.authInvalidCredentials);
+      else setLocation('/');
+    } catch {
+      setMessage(copy.authGenericError);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  if (user) return <Redirect to="/" />;
+  return <div className={`auth-screen ${language === 'en' ? 'lang-en' : ''}`} dir={language === 'ar' ? 'rtl' : 'ltr'}>
+    <div className="auth-top"><a className="auth-brand brand" href={basePath || '/'}><span className="brand-mark">ن</span><span className="brand-word">NOIR</span></a><LanguageToggle /></div>
+    <section className="auth-card">
+      <span className="auth-emblem">ن</span>
+      <p className="auth-tagline">{copy.signInTagline}</p>
+      <h1>{copy.signInTitle}</h1>
+      <p className="auth-subtitle">{copy.signInSubtitle}</p>
+      <form className="auth-form" onSubmit={(event) => void submit(event)} data-testid="form-sign-in">
+        <label>{copy.email}<input type="email" name="email" autoComplete="email" required maxLength={254} value={email} onChange={(event) => setEmail(event.target.value)} placeholder={copy.emailPlaceholder} data-testid="input-sign-in-email" /></label>
+        <label>{copy.password}<span className="password-field"><input type={showPassword ? 'text' : 'password'} name="password" autoComplete="current-password" required minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} placeholder={copy.passwordPlaceholder} data-testid="input-sign-in-password" /><button className="password-toggle" type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? copy.hidePassword : copy.showPassword} aria-pressed={showPassword} data-testid="button-toggle-sign-in-password">{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></span></label>
+        {message && <p className="auth-message error" role="alert" data-testid="status-sign-in">{message}</p>}
+        <button className="auth-submit" type="submit" disabled={isSubmitting} data-testid="button-submit-sign-in">{isSubmitting ? copy.authWorking : copy.signIn}</button>
+      </form>
+      <p className="auth-switch">{copy.noAccount} <a href={`${basePath || ''}/sign-up`}>{copy.signUp}</a></p>
+    </section>
+  </div>;
 }
 function SignUpPage() {
   const { language } = useLanguage();
   const copy = translations[language];
-  return <div className={`auth-screen ${language === 'en' ? 'lang-en' : ''}`} dir={language === 'ar' ? 'rtl' : 'ltr'}><a className="auth-brand brand" href={basePath || '/'}><span className="brand-mark">ن</span><span className="brand-word">NOIR</span></a><LanguageToggle /><p>{copy.signUpTagline}</p><SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} /></div>;
+  const { user } = useAuth();
+  const [, setLocation] = useLocation();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [message, setMessage] = useState('');
+  const [isSuccess, setIsSuccess] = useState(false);
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setMessage('');
+    setIsSuccess(false);
+    setIsSubmitting(true);
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: { emailRedirectTo: `${window.location.origin}${basePath || ''}/` },
+      });
+      if (error) setMessage(copy.authSignUpFailed);
+      else if (data.session) setLocation('/');
+      else {
+        setIsSuccess(true);
+        setMessage(copy.authCheckEmail);
+      }
+    } catch {
+      setMessage(copy.authGenericError);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  if (user) return <Redirect to="/" />;
+  return <div className={`auth-screen ${language === 'en' ? 'lang-en' : ''}`} dir={language === 'ar' ? 'rtl' : 'ltr'}>
+    <div className="auth-top"><a className="auth-brand brand" href={basePath || '/'}><span className="brand-mark">ن</span><span className="brand-word">NOIR</span></a><LanguageToggle /></div>
+    <section className="auth-card">
+      <span className="auth-emblem">ن</span>
+      <p className="auth-tagline">{copy.signUpTagline}</p>
+      <h1>{copy.signUpTitle}</h1>
+      <p className="auth-subtitle">{copy.signUpSubtitle}</p>
+      <form className="auth-form" onSubmit={(event) => void submit(event)} data-testid="form-sign-up">
+        <label>{copy.email}<input type="email" name="email" autoComplete="email" required maxLength={254} value={email} onChange={(event) => setEmail(event.target.value)} placeholder={copy.emailPlaceholder} data-testid="input-sign-up-email" /></label>
+        <label>{copy.password}<span className="password-field"><input type={showPassword ? 'text' : 'password'} name="password" autoComplete="new-password" required minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} placeholder={copy.passwordPlaceholder} data-testid="input-sign-up-password" /><button className="password-toggle" type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? copy.hidePassword : copy.showPassword} aria-pressed={showPassword} data-testid="button-toggle-sign-up-password">{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></span><small className="auth-hint">{copy.passwordMinimum}</small></label>
+        {message && <p className={`auth-message ${isSuccess ? 'success' : 'error'}`} role={isSuccess ? 'status' : 'alert'} data-testid="status-sign-up">{message}</p>}
+        <button className="auth-submit" type="submit" disabled={isSubmitting} data-testid="button-submit-sign-up">{isSubmitting ? copy.authWorking : copy.signUp}</button>
+      </form>
+      <p className="auth-switch">{copy.haveAccount} <a href={`${basePath || ''}/sign-in`}>{copy.signIn}</a></p>
+    </section>
+  </div>;
 }
-function ClerkCacheInvalidator() {
-  const { addListener } = useClerk();
+function AuthCacheInvalidator() {
+  const { user, isLoaded } = useAuth();
   const queryClient = useQueryClient();
   const previousUserId = useRef<string | null | undefined>(undefined);
-  useEffect(() => addListener(({ user }) => {
+  useEffect(() => {
+    if (!isLoaded) return;
     const userId = user?.id ?? null;
     if (previousUserId.current !== undefined && previousUserId.current !== userId) queryClient.clear();
     previousUserId.current = userId;
-  }), [addListener, queryClient]);
+  }, [isLoaded, user?.id, queryClient]);
   return null;
 }
-function ClerkRoutes() {
-  const { language } = useLanguage();
-  const copy = translations[language];
-  const [, setLocation] = useLocation();
-  const localization = language === 'ar'
-    ? { signIn: { start: { title: copy.signInTitle, subtitle: copy.signInSubtitle } }, signUp: { start: { title: copy.signUpTitle, subtitle: copy.signUpSubtitle } } }
-    : undefined;
-  return <ClerkProvider publishableKey={clerkPubKey} proxyUrl={clerkProxyUrl} appearance={clerkAppearance} signInUrl={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} localization={localization} routerPush={(to) => setLocation(stripBase(to))} routerReplace={(to) => setLocation(stripBase(to), { replace: true })}>
-    <QueryClientProvider client={queryClient}><ClerkCacheInvalidator /><Switch>
-      <Route path="/" component={HomeRedirect} />
-      <Route path="/account" component={AccountRoute} />
-      <Route path="/sign-in/*?" component={SignInPage} />
-      <Route path="/sign-up/*?" component={SignUpPage} />
-      <Route component={HomeRedirect} />
-    </Switch></QueryClientProvider>
-  </ClerkProvider>;
+function AppRoutes() {
+  return <QueryClientProvider client={queryClient}><AuthProvider><AuthCacheInvalidator /><Switch>
+    <Route path="/" component={HomeRoute} />
+    <Route path="/account" component={AccountRoute} />
+    <Route path="/sign-in/*?" component={SignInPage} />
+    <Route path="/sign-up/*?" component={SignUpPage} />
+    <Route component={HomeRoute} />
+  </Switch></AuthProvider></QueryClientProvider>;
 }
 function App() {
   const [language, setLanguage] = useState<Language>(() => {
@@ -593,7 +683,7 @@ function App() {
     document.querySelector('meta[name="twitter:description"]')?.setAttribute('content', description);
     try { window.localStorage.setItem('noir-language', language); } catch { /* Keep the selection for this session even if storage is unavailable. */ }
   }, [language]);
-  return <LanguageContext.Provider value={{ language, setLanguage }}><WouterRouter base={basePath}><ClerkRoutes /></WouterRouter></LanguageContext.Provider>;
+  return <LanguageContext.Provider value={{ language, setLanguage }}><WouterRouter base={basePath}><AppRoutes /></WouterRouter></LanguageContext.Provider>;
 }
 
 export default App;
