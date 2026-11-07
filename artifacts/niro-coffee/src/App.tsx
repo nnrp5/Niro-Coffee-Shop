@@ -449,7 +449,7 @@ function AccountPage() {
   }, [profile.data, authDisplayName]);
   useEffect(() => {
     let active = true;
-    if (!user?.id) {
+    if (!user?.id || !supabase) {
       setCustomerRole(null);
       return () => { active = false; };
     }
@@ -513,7 +513,7 @@ function AccountPage() {
         {isLoading ? <div className="account-skeleton" aria-label={copy.loadingAccount} data-testid="state-account-loading"><i /><i /><i /></div> : isError ? <div className="account-state error" data-testid="state-account-error"><strong>{copy.accountLoadError}</strong><span>{copy.connectionRetry}</span><button className="button-outline" onClick={refetchAll}><RefreshCw size={14} /> {copy.retry}</button></div> : <>
           {tab === 'profile' && <section className="account-panel">
             <div className="panel-intro"><h2>{copy.profileIntroTitle}</h2><p>{copy.profileIntroDescription}</p></div>
-            <form className="profile-form" data-testid="form-profile" onSubmit={(event) => { event.preventDefault(); updateProfile.mutate({ data: { fullName, phone } }, { onSuccess: async () => { const { error } = await supabase.from('customer_profiles').update({ customer_name: fullName.trim() }).eq('customer_id', user?.id ?? ''); if (error) { setProfileMessage(copy.profileSaveError); return; } setProfileMessage(copy.profileSaved); void queryClient.invalidateQueries({ queryKey: getGetAccountProfileQueryKey() }); }, onError: () => setProfileMessage(copy.profileSaveError) }); }}>
+            <form className="profile-form" data-testid="form-profile" onSubmit={(event) => { event.preventDefault(); updateProfile.mutate({ data: { fullName, phone } }, { onSuccess: async () => { if (!supabase) { setProfileMessage(copy.profileSaveError); return; } const { error } = await supabase.from('customer_profiles').update({ customer_name: fullName.trim() }).eq('customer_id', user?.id ?? ''); if (error) { setProfileMessage(copy.profileSaveError); return; } setProfileMessage(copy.profileSaved); void queryClient.invalidateQueries({ queryKey: getGetAccountProfileQueryKey() }); }, onError: () => setProfileMessage(copy.profileSaveError) }); }}>
               <label>{copy.fullName}<input data-testid="input-profile-name" value={fullName} onChange={(event) => setFullName(event.target.value)} required maxLength={120} /></label>
               <label>{copy.email}<input value={user?.email || ''} readOnly aria-label={copy.emailFromAuth} /></label>
               <label>{copy.phone}<input data-testid="input-profile-phone" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="+965 5xxx xxxx" maxLength={40} dir="ltr" /></label>
@@ -562,6 +562,10 @@ function SignInPage() {
   const [message, setMessage] = useState('');
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!supabase) {
+      setMessage(copy.authConfigurationError);
+      return;
+    }
     setMessage('');
     setIsSubmitting(true);
     try {
@@ -585,8 +589,8 @@ function SignInPage() {
       <form className="auth-form" onSubmit={(event) => void submit(event)} data-testid="form-sign-in">
         <label>{copy.email}<input type="email" name="email" autoComplete="email" required maxLength={254} value={email} onChange={(event) => setEmail(event.target.value)} placeholder={copy.emailPlaceholder} data-testid="input-sign-in-email" /></label>
         <label>{copy.password}<span className="password-field"><input type={showPassword ? 'text' : 'password'} name="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} placeholder={copy.passwordPlaceholder} data-testid="input-sign-in-password" /><button className="password-toggle" type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? copy.hidePassword : copy.showPassword} aria-pressed={showPassword} data-testid="button-toggle-sign-in-password">{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></span></label>
-        {message && <p className="auth-message error" role="alert" data-testid="status-sign-in">{message}</p>}
-        <button className="auth-submit" type="submit" disabled={isSubmitting} data-testid="button-submit-sign-in">{isSubmitting ? copy.authWorking : copy.signIn}</button>
+        {(message || !supabase) && <p className="auth-message error" role="alert" data-testid="status-sign-in">{message || copy.authConfigurationError}</p>}
+        <button className="auth-submit" type="submit" disabled={isSubmitting || !supabase} data-testid="button-submit-sign-in">{isSubmitting ? copy.authWorking : copy.signIn}</button>
       </form>
       <p className="auth-switch">{copy.noAccount} <a href={`${basePath || ''}/sign-up`}>{copy.signUp}</a></p>
     </section>
@@ -605,6 +609,10 @@ function SignUpPage() {
   const [isSuccess, setIsSuccess] = useState(false);
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!supabase) {
+      setMessage(copy.authConfigurationError);
+      return;
+    }
     setMessage('');
     setIsSuccess(false);
     setIsSubmitting(true);
@@ -637,8 +645,8 @@ function SignUpPage() {
       <form className="auth-form" onSubmit={(event) => void submit(event)} data-testid="form-sign-up">
         <label>{copy.email}<input type="email" name="email" autoComplete="email" required maxLength={254} value={email} onChange={(event) => setEmail(event.target.value)} placeholder={copy.emailPlaceholder} data-testid="input-sign-up-email" /></label>
         <label>{copy.password}<span className="password-field"><input type={showPassword ? 'text' : 'password'} name="password" autoComplete="new-password" required minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} placeholder={copy.passwordPlaceholder} data-testid="input-sign-up-password" /><button className="password-toggle" type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? copy.hidePassword : copy.showPassword} aria-pressed={showPassword} data-testid="button-toggle-sign-up-password">{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></span><small className="auth-hint">{copy.passwordMinimum}</small></label>
-        {message && <p className={`auth-message ${isSuccess ? 'success' : 'error'}`} role={isSuccess ? 'status' : 'alert'} data-testid="status-sign-up">{message}</p>}
-        <button className="auth-submit" type="submit" disabled={isSubmitting} data-testid="button-submit-sign-up">{isSubmitting ? copy.authWorking : copy.signUp}</button>
+        {(message || !supabase) && <p className={`auth-message ${isSuccess ? 'success' : 'error'}`} role={isSuccess ? 'status' : 'alert'} data-testid="status-sign-up">{message || copy.authConfigurationError}</p>}
+        <button className="auth-submit" type="submit" disabled={isSubmitting || !supabase} data-testid="button-submit-sign-up">{isSubmitting ? copy.authWorking : copy.signUp}</button>
       </form>
       <p className="auth-switch">{copy.haveAccount} <a href={`${basePath || ''}/sign-in`}>{copy.signIn}</a></p>
     </section>

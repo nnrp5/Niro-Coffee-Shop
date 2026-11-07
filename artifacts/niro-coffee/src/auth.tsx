@@ -5,17 +5,24 @@ import { setAuthTokenGetter } from '@workspace/api-client-react';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim();
 const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim();
 
-if (!supabaseUrl || !supabasePublishableKey) {
-  throw new Error('Supabase Auth is not configured for NOIR Coffee.');
+function createAuthClient() {
+  if (!supabaseUrl || !supabasePublishableKey) return null;
+  try {
+    const url = new URL(supabaseUrl);
+    if (url.protocol !== 'https:') return null;
+    return createClient(supabaseUrl, supabasePublishableKey, {
+      auth: {
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        persistSession: true,
+      },
+    });
+  } catch {
+    return null;
+  }
 }
 
-export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
-  auth: {
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-    persistSession: true,
-  },
-});
+export const supabase = createAuthClient();
 
 type AuthContextValue = {
   user: User | null;
@@ -32,6 +39,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const sessionRef = useRef<Session | null>(null);
 
   useEffect(() => {
+    if (!supabase) {
+      setAuthTokenGetter(null);
+      setIsLoaded(true);
+      return;
+    }
     let mounted = true;
     let authEventReceived = false;
     const updateSession = (nextSession: Session | null) => {
@@ -66,6 +78,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     session,
     isLoaded,
     signOut: async () => {
+      if (!supabase) throw new Error('Supabase Auth is not configured.');
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
     },

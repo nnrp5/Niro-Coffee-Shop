@@ -22,8 +22,9 @@ if (Number.isNaN(port) || port <= 0) {
 const basePath = process.env.BASE_PATH;
 
 const supabaseKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim();
+let isPublicKey = false;
 if (supabaseKey) {
-  let isPublicKey = supabaseKey.startsWith('sb_publishable_');
+  isPublicKey = supabaseKey.startsWith('sb_publishable_');
   if (!isPublicKey && supabaseKey.split('.').length === 3) {
     try {
       isPublicKey = JSON.parse(Buffer.from(supabaseKey.split('.')[1], 'base64url').toString()).role === 'anon';
@@ -32,9 +33,12 @@ if (supabaseKey) {
     }
   }
   if (!isPublicKey) {
-    throw new Error('Use a Supabase publishable or anon key for the frontend, never a secret or service-role key.');
+    console.warn('Supabase public key configuration is invalid. Authentication is disabled; the rejected key will not be sent to browsers.');
   }
 }
+// Scrub rejected values before Vite exposes any VITE_ environment variables.
+const publicSupabaseKey = isPublicKey ? supabaseKey! : '';
+process.env.VITE_SUPABASE_PUBLISHABLE_KEY = publicSupabaseKey;
 
 if (!basePath) {
   throw new Error(
@@ -44,6 +48,9 @@ if (!basePath) {
 
 export default defineConfig({
   base: basePath,
+  define: {
+    'import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY': JSON.stringify(publicSupabaseKey),
+  },
   plugins: [
     react(),
     tailwindcss({ optimize: false }),

@@ -187,6 +187,7 @@ export const translations = {
     authInvalidCredentials: 'تحقق من البريد وكلمة المرور وتأكيد بريدك الإلكتروني.',
     authSignUpFailed: 'تعذر إنشاء الحساب. تحقق من البيانات أو جرّب تسجيل الدخول إن كان لديك حساب.',
     authGenericError: 'تعذر الاتصال بخدمة تسجيل الدخول. حاول مجدداً.',
+    authConfigurationError: 'تسجيل الدخول غير متاح مؤقتاً: إعدادات Supabase تحتاج إلى التصحيح.',
     authCheckEmail: 'تحقق من بريدك الإلكتروني واضغط رابط التأكيد قبل تسجيل الدخول.',
   },
   en: {
@@ -375,6 +376,7 @@ export const translations = {
     authInvalidCredentials: 'Check your email, password, and email confirmation.',
     authSignUpFailed: 'Could not create your account. Check your details or sign in if you already have an account.',
     authGenericError: 'Could not reach the sign-in service. Please try again.',
+    authConfigurationError: 'Sign-in is temporarily unavailable: Supabase settings need to be corrected.',
     authCheckEmail: 'Check your inbox and confirm your email address before signing in.',
   },
 } satisfies Record<Language, Record<string, string | ((value: number | string) => string) | string[]>>;
