@@ -73,6 +73,7 @@ function Storefront() {
   const removeFavorite = useRemoveAccountFavorite();
   const [cart, setCart] = useState<CartLine[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
+  const [wishlistOpen, setWishlistOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -84,7 +85,23 @@ function Storefront() {
   const [pointsInput, setPointsInput] = useState('');
   const [appliedPoints, setAppliedPoints] = useState(0);
 
+  useEffect(() => {
+    if (!cartOpen && !wishlistOpen) return;
+    const closeDrawersOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setCartOpen(false);
+        setWishlistOpen(false);
+      }
+    };
+    window.addEventListener('keydown', closeDrawersOnEscape);
+    return () => window.removeEventListener('keydown', closeDrawersOnEscape);
+  }, [cartOpen, wishlistOpen]);
+
   const cartCount = cart.reduce((count, line) => count + line.quantity, 0);
+  const favoriteProducts = (favoritesQuery.data ?? [])
+    .map((favorite) => products.find((product) => product.id === favorite.productId))
+    .filter((product): product is StoreProduct => Boolean(product));
+  const favoriteCount = favoritesQuery.data?.length ?? 0;
   const subtotal = cart.reduce((sum, line) => sum + line.product.price * line.quantity, 0);
   const availablePoints = loyaltyQuery.data?.pointsBalance ?? 0;
   const pointsDiscount = Math.min(
@@ -131,6 +148,8 @@ function Storefront() {
         ? current.map((line) => line.product.id === product.id ? { ...line, quantity: line.quantity + 1 } : line)
         : [...current, { product, quantity: 1 }];
     });
+    setWishlistOpen(false);
+    setCartOpen(true);
     showToast(copy.addToCartToast(localizeProduct(product, language).name));
   };
 
@@ -161,9 +180,18 @@ function Storefront() {
     if (!isSignedIn) { setLocation('/sign-in'); return; }
     const productId = String(product.id);
     const exists = (favoritesQuery.data ?? []).some((favorite) => favorite.productId === productId);
+    setCartOpen(false);
+    setWishlistOpen(true);
     const onSuccess = () => queryClient.invalidateQueries({ queryKey: getGetAccountFavoritesQueryKey() });
-    if (exists) removeFavorite.mutate({ productId }, { onSuccess });
-    else saveFavorite.mutate({ data: { productId } }, { onSuccess });
+    const onError = () => showToast(copy.favoriteSaveError);
+    if (exists) removeFavorite.mutate({ productId }, { onSuccess, onError });
+    else saveFavorite.mutate({ data: { productId } }, { onSuccess, onError });
+  };
+
+  const openWishlist = () => {
+    if (!isSignedIn) { setLocation('/sign-in'); return; }
+    setCartOpen(false);
+    setWishlistOpen(true);
   };
 
   return (
@@ -183,6 +211,7 @@ function Storefront() {
             <a href="#collections" data-testid="link-nav-collections" onClick={() => setMobileNavOpen(false)}>{copy.collections}</a>
             <a href="#about" data-testid="link-nav-about" onClick={() => setMobileNavOpen(false)}>{copy.about}</a>
             <a href="#contact" data-testid="link-nav-contact" onClick={() => setMobileNavOpen(false)}>{copy.contact}</a>
+            <a href={isSignedIn ? `${basePath || ''}/account?tab=orders` : `${basePath || ''}/sign-in`} data-testid="link-nav-orders" onClick={() => setMobileNavOpen(false)}>{copy.accountOrders}</a>
           </nav>
           <div className="nav-actions">
             <LanguageToggle />
@@ -198,7 +227,11 @@ function Storefront() {
                 <a className="nav-auth-link nav-auth-sign-up" href={`${basePath || ''}/sign-up`} data-testid="link-sign-up">{copy.signUpNav}</a>
               </div>
             )}
-            <button className="icon-button" aria-label={copy.openCart(cartCount)} data-testid="button-open-cart" onClick={() => setCartOpen(true)}>
+            <button className="icon-button" aria-label={`${copy.accountFavorites} (${favoriteCount})`} data-testid="button-open-wishlist" onClick={openWishlist}>
+              <Heart size={18} strokeWidth={1.6} />
+              {favoriteCount > 0 && <span className="favorite-count">{favoriteCount}</span>}
+            </button>
+            <button className="icon-button" aria-label={copy.openCart(cartCount)} data-testid="button-open-cart" onClick={() => { setWishlistOpen(false); setCartOpen(true); }}>
               <ShoppingBag size={18} strokeWidth={1.6} />
               {cartCount > 0 && <span className="cart-count">{cartCount}</span>}
             </button>
@@ -247,7 +280,7 @@ function Storefront() {
                 <div className="product-visual">
                   <div className="product-photo"><img src={productImageUrl(product.imageUrl)} alt={localizedProduct.name} /></div>
                   <span className="product-tag">{localizedProduct.tag}</span>
-                  <button className={`favorite-button ${(favoritesQuery.data ?? []).some((favorite) => favorite.productId === product.id) ? 'is-favorite' : ''}`} data-testid={`button-favorite-${product.id}`} aria-label={isSignedIn ? copy.saveFavoriteSignedIn : copy.saveFavoriteSignedOut} onClick={() => toggleFavorite(product)}><Heart size={16} fill={(favoritesQuery.data ?? []).some((favorite) => favorite.productId === product.id) ? 'currentColor' : 'none'} /></button>
+                  <button className={`favorite-button ${(favoritesQuery.data ?? []).some((favorite) => favorite.productId === product.id) ? 'is-favorite' : ''}`} data-testid={`button-favorite-${product.id}`} aria-label={isSignedIn ? copy.saveFavoriteSignedIn : copy.saveFavoriteSignedOut} aria-pressed={(favoritesQuery.data ?? []).some((favorite) => favorite.productId === product.id)} onClick={() => toggleFavorite(product)}><Heart size={16} fill={(favoritesQuery.data ?? []).some((favorite) => favorite.productId === product.id) ? 'currentColor' : 'none'} /></button>
                   <div className="bag">
                     <span className="bag-seam" />
                     <span className="bag-brand">NOIR COFFEE</span>
@@ -375,8 +408,8 @@ function Storefront() {
           <div className="footer-credit">By: Abdulaziz ali hamada</div>
       </footer>
 
-      <div className={`overlay ${cartOpen ? 'open' : ''}`} onClick={() => setCartOpen(false)} aria-hidden="true" />
-      <aside className={`drawer ${cartOpen ? 'open' : ''}`} aria-label="Shopping cart" aria-modal="true" role="dialog">
+      <div className={`overlay ${cartOpen || wishlistOpen ? 'open' : ''}`} onClick={() => { setCartOpen(false); setWishlistOpen(false); }} aria-hidden="true" />
+      <aside className={`drawer ${cartOpen ? 'open' : ''}`} aria-label={copy.cart} aria-modal="true" aria-hidden={!cartOpen} inert={!cartOpen} role="dialog">
         <div className="drawer-head"><h2>{copy.cart} <span data-testid="text-cart-count">({cartCount})</span></h2><button className="close-button" aria-label={copy.closeCart} data-testid="button-close-cart" onClick={() => setCartOpen(false)}><X size={17} /></button></div>
         {cart.length === 0 ? <div className="empty-cart"><Coffee size={33} strokeWidth={1.2} /><strong>{copy.emptyCartTitle}</strong><span>{copy.emptyCartDescription}</span><button className="button-primary" style={{ marginTop: 20 }} onClick={() => { setCartOpen(false); jumpToShop(); }}>{copy.browseCoffee} {language === 'ar' ? <ArrowLeft size={14} /> : <ArrowRight size={14} />}</button></div> : <>
           <div className="cart-lines">
@@ -410,6 +443,38 @@ function Storefront() {
           </div>
         </>}
       </aside>
+      <aside className={`drawer wishlist-drawer ${wishlistOpen ? 'open' : ''}`} aria-label={copy.accountFavorites} aria-modal="true" aria-hidden={!wishlistOpen} inert={!wishlistOpen} role="dialog">
+        <div className="drawer-head">
+          <h2>{copy.accountFavorites} <span data-testid="text-wishlist-count">({favoriteCount})</span></h2>
+          <button className="close-button" aria-label={copy.closeWishlist} data-testid="button-close-wishlist" onClick={() => setWishlistOpen(false)}><X size={17} /></button>
+        </div>
+        {favoritesQuery.isLoading || productsQuery.isLoading ? <div className="wishlist-state" role="status">{copy.productsLoading}</div>
+          : favoritesQuery.isError || productsQuery.isError ? <div className="wishlist-state" role="alert">{copy.favoriteSaveError}</div>
+            : favoriteProducts.length === 0 ? <div className="wishlist-state">
+              <Heart size={31} strokeWidth={1.3} />
+              <strong>{copy.favoritesEmptyTitle}</strong>
+              <span>{copy.favoritesEmptyDescription}</span>
+              <button className="button-primary" onClick={() => { setWishlistOpen(false); jumpToShop(); }}>{copy.browseCoffee} {language === 'ar' ? <ArrowLeft size={14} /> : <ArrowRight size={14} />}</button>
+            </div>
+              : <div className="wishlist-lines">
+                {favoriteProducts.map((product) => {
+                  const localizedProduct = localizeProduct(product, language);
+                  const productId = String(product.id);
+                  return <article className="wishlist-line" key={productId} data-testid={`wishlist-product-${productId}`}>
+                    <img src={productImageUrl(product.imageUrl)} alt={localizedProduct.name} />
+                    <div className="wishlist-line-copy">
+                      <strong>{localizedProduct.name}</strong>
+                      <span>{localizedProduct.origin}</span>
+                      <b>{formatKwd(product.price, language)}</b>
+                    </div>
+                    <div className="wishlist-line-actions">
+                      <button type="button" aria-label={copy.addProduct(localizedProduct.name)} data-testid={`button-wishlist-add-${productId}`} onClick={() => addToCart(product)}><ShoppingBag size={15} /></button>
+                      <button type="button" aria-label={`${copy.removeFavorite} ${localizedProduct.name}`} data-testid={`button-wishlist-remove-${productId}`} onClick={() => removeFavorite.mutate({ productId }, { onSuccess: () => void queryClient.invalidateQueries({ queryKey: getGetAccountFavoritesQueryKey() }), onError: () => showToast(copy.favoriteSaveError) })}><X size={15} /></button>
+                    </div>
+                  </article>;
+                })}
+              </div>}
+      </aside>
 
       <div className={`search-panel ${searchOpen ? 'open' : ''}`} role="dialog" aria-label={copy.searchProducts} aria-modal="true">
         <div className="search-row"><Search size={19} /><input data-testid="input-store-search" autoFocus={searchOpen} value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder={copy.searchPlaceholder} /><button className="close-button" aria-label={copy.closeCart} data-testid="button-close-search" onClick={() => setSearchOpen(false)}><X size={16} /></button></div>
@@ -423,6 +488,7 @@ function Storefront() {
 }
 
 type AccountTab = 'profile' | 'orders' | 'tracking' | 'loyalty' | 'favorites' | 'settings';
+const accountTabIds: AccountTab[] = ['profile', 'orders', 'tracking', 'loyalty', 'favorites', 'settings'];
 
 function AccountPage() {
   const { language } = useLanguage();
@@ -438,7 +504,10 @@ function AccountPage() {
   const products = productsQuery.data ?? [];
   const updateProfile = useUpdateAccountProfile();
   const removeFavorite = useRemoveAccountFavorite();
-  const [tab, setTab] = useState<AccountTab>('profile');
+  const [tab, setTab] = useState<AccountTab>(() => {
+    const requestedTab = new URLSearchParams(window.location.search).get('tab');
+    return accountTabIds.includes(requestedTab as AccountTab) ? requestedTab as AccountTab : 'profile';
+  });
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [profileMessage, setProfileMessage] = useState('');
@@ -502,6 +571,10 @@ function AccountPage() {
   const isError = (tab === 'profile' && profile.isError) || ((tab === 'orders' || tab === 'tracking') && orders.isError) || (tab === 'loyalty' && loyalty.isError) || (tab === 'favorites' && (favorites.isError || productsQuery.isError));
   const sectionTitle = accountNav.find((item) => item.id === tab)?.label ?? '';
   const favoriteProducts = (favorites.data ?? []).map((favorite) => ({ favorite, product: products.find((item) => item.id === favorite.productId) })).filter((item) => item.product);
+  const selectAccountTab = (nextTab: AccountTab) => {
+    setTab(nextTab);
+    setLocation(nextTab === 'profile' ? '/account' : `/account?tab=${nextTab}`);
+  };
 
   return <div className={`account-shell ${language === 'en' ? 'lang-en' : ''}`} dir={language === 'ar' ? 'rtl' : 'ltr'}>
     <header className="account-topbar">
@@ -512,7 +585,7 @@ function AccountPage() {
     <div className="account-layout">
       <aside className="account-sidebar">
         <div className="account-welcome"><span className="account-avatar">{(fullName || authDisplayName || (language === 'ar' ? 'ن' : 'N')).slice(0, 1)}</span><div><small>{copy.welcome}</small><strong data-testid="text-account-name">{fullName || authDisplayName || copy.guestName}</strong></div></div>
-        <nav aria-label={copy.accountMenu}>{accountNav.map(({ id, label, icon: Icon }) => <button key={id} className={tab === id ? 'active' : ''} data-testid={`account-nav-${id}`} onClick={() => setTab(id)}><Icon size={17} /><span>{label}</span>{language === 'ar' ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}</button>)}</nav>
+         <nav aria-label={copy.accountMenu}>{accountNav.map(({ id, label, icon: Icon }) => <button key={id} className={tab === id ? 'active' : ''} data-testid={`account-nav-${id}`} onClick={() => selectAccountTab(id)}><Icon size={17} /><span>{label}</span>{language === 'ar' ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}</button>)}</nav>
         <button className="account-logout" data-testid="button-sign-out" onClick={() => void signOut().then(() => setLocation('/sign-in')).catch(() => setProfileMessage(copy.signOutError))}><LogOut size={16} /> {copy.signOut}</button>
       </aside>
       <main className="account-content">
