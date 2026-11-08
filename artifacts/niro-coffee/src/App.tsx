@@ -188,7 +188,9 @@ function Storefront() {
             <LanguageToggle />
             <button className="icon-button" aria-label={copy.searchProducts} data-testid="button-open-search" onClick={() => setSearchOpen(true)}><Search size={18} strokeWidth={1.6} /></button>
             {isSignedIn ? (
-              <a className="nav-auth-link nav-auth-account" href={`${basePath || ''}/account`} data-testid="link-account">{copy.account}</a>
+              <a className="nav-auth-link nav-auth-account" href={`${basePath || ''}/account`} aria-label={`${copy.account}: ${user?.email ?? copy.account}`} data-testid="link-account">
+                <span className="nav-account-email" dir="ltr" data-testid="text-nav-email">{user?.email ?? copy.account}</span>
+              </a>
             ) : (
               <div className="nav-auth-links">
                 <a className="nav-auth-link" href={`${basePath || ''}/sign-in`} data-testid="link-sign-in">{copy.signIn}</a>
@@ -591,6 +593,9 @@ function SignInPage() {
       <p className="auth-tagline">{copy.signInTagline}</p>
       <h1>{copy.signInTitle}</h1>
       <p className="auth-subtitle">{copy.signInSubtitle}</p>
+      <p className="auth-verification-notice" dir="ltr" role="note" data-testid="notice-email-verification">
+        YOU NEED TO CREATE ACCOUNT FIRST AND VERIFY IT THEN SIGN IN
+      </p>
       <form className="auth-form" onSubmit={(event) => void submit(event)} data-testid="form-sign-in">
         <label htmlFor="sign-in-email">{copy.email}<input id="sign-in-email" type="email" name="email" autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} inputMode="email" enterKeyHint="next" required maxLength={254} placeholder={copy.emailPlaceholder} data-testid="input-sign-in-email" /></label>
         <label htmlFor="sign-in-password">{copy.password}<span className="password-field"><input id="sign-in-password" type={showPassword ? 'text' : 'password'} name="password" autoComplete="current-password" autoCapitalize="none" autoCorrect="off" spellCheck={false} enterKeyHint="go" required placeholder={copy.passwordPlaceholder} data-testid="input-sign-in-password" /><button className="password-toggle" type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? copy.hidePassword : copy.showPassword} aria-pressed={showPassword} data-testid="button-toggle-sign-in-password">{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></span></label>

@@ -89,6 +89,8 @@ svg { color:#c8795f; }
 .nav-auth-link:hover { border-color:rgba(255,248,232,.56); background:rgba(255,248,232,.14); color:#fff8e8; }
 .nav-auth-sign-up,.nav-auth-account { border-color:#fff8e8; background:#fff8e8; color:#a35f48; }
 .nav-auth-sign-up:hover,.nav-auth-account:hover { border-color:#f3e5dc; background:#f3e5dc; color:#884733; }
+.nav-auth-account { max-width:min(270px,25vw); min-width:0; white-space:normal; }
+.nav-account-email { display:block; max-width:100%; min-width:0; direction:ltr; unicode-bidi:plaintext; white-space:normal; overflow-wrap:anywhere; text-align:center; line-height:1.25; }
 .nav-auth-separator { color:rgba(255,248,232,.8); font-size:11px; }
 .cart-count { position:absolute; top:0; right:-1px; min-width:16px; height:16px; display:grid; place-items:center; padding:0 4px; color:#fff9ec; background:#243e33; border-radius:99px; font-size:9px; }
 .mobile-menu { display:none; }
@@ -378,6 +380,7 @@ svg { color:#c8795f; }
 .auth-tagline { color:#a96c56; font-size:10px; margin:0 0 8px; }
 .auth-card h1 { margin:0; font-size:27px; line-height:1.5; }
 .auth-subtitle { margin:7px 0 25px; color:#737a70; font-size:12px; line-height:1.8; }
+.auth-verification-notice { margin:0 0 22px; padding:15px 16px; border:1px solid rgba(200,121,95,.42); border-radius:14px; background:#f3e5dc; color:#884733; font-family:Inter,sans-serif; font-size:clamp(15px,2vw,19px); font-weight:800; letter-spacing:.02em; line-height:1.45; text-align:center; }
 .auth-form { display:grid; gap:18px; text-align:start; }
 .auth-form label { display:grid; gap:8px; font-size:12px; font-weight:500; }
 .auth-form input { position:relative; z-index:1; width:100%; min-height:48px; padding:0 14px; border:1px solid #d8d2c5; border-radius:12px; background:#f4f0e5; color:#243e33; outline:none; direction:ltr; text-align:left; cursor:text; pointer-events:auto; user-select:text; -webkit-user-select:text; touch-action:manipulation; transition:border-color .2s,box-shadow .2s; }
@@ -474,6 +477,8 @@ svg { color:#c8795f; }
   .nav-actions .icon-button { width:31px; height:31px; }
   .nav-auth-links { gap:2px; }
   .nav-auth-link { padding:5px 6px; font-size:8px; }
+  .nav-auth-account { max-width:clamp(105px,35vw,165px); padding:5px 6px; }
+  .nav-account-email { font-size:8px; }
   .nav-auth-separator { font-size:8px; }
   .language-toggle { min-width:32px; height:29px; padding:0 6px; font-size:8px; }
   .mobile-menu { display:grid; }
@@ -526,6 +531,8 @@ svg { color:#c8795f; }
   .nav-actions .icon-button,.mobile-menu { width:28px; height:28px; }
   .nav-auth-links { gap:1px; }
   .nav-auth-link { padding:4px 4px; font-size:7px; }
+  .nav-auth-account { max-width:clamp(92px,35vw,125px); padding:4px; }
+  .nav-account-email { font-size:7px; }
   .nav-auth-separator { font-size:7px; }
   .language-toggle { min-width:29px; height:27px; padding:0 5px; font-size:7px; }
 }
